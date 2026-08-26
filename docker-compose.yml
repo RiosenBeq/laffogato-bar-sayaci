@@ -1,0 +1,29 @@
+# LAFFOGATO — container ile çalıştırma.
+#   docker compose up -d     → başlat
+#   docker compose logs -f   → günlük
+#   docker compose down      → durdur
+#
+# KAMERA UYARISI: Docker Desktop (Mac/Windows) bilgisayarın kamerasını
+# container'a VEREMEZ. .env dosyasında KAYNAK=0 yazıyorsa container'da
+# çalışmaz; RTSP adresi ya da video dosyası kullanın.
+# Linux'ta USB kamera için aşağıdaki 'devices' bloğunu açın.
+
+services:
+  laffogato:
+    build: .
+    image: laffogatopped
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./veri:/uygulama/veri          # veritabanı, görüntüler, nesne kütüphanesi
+      - ./.env:/uygulama/.env:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://127.0.0.1:8100/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+    # --- Linux'ta USB/yerleşik kamera (Mac ve Windows'ta ÇALIŞMAZ) ---
+    # devices:
+    #   - "/dev/video0:/dev/video0"

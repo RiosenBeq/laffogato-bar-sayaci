@@ -8,6 +8,7 @@ ve kaydedilir; bu yüzden sayılar birkaç saniye gecikmeyle görünür.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 import uuid
@@ -108,11 +109,14 @@ class Analiz:
 
     def _kaynagi_ac(self):
         kaynak = self.ayarlar.kaynak_cozumle()
-        yakalayici = (
-            cv2.VideoCapture(kaynak)
-            if isinstance(kaynak, int)
-            else cv2.VideoCapture(kaynak, cv2.CAP_FFMPEG)
-        )
+        if isinstance(kaynak, int):
+            # Windows'ta varsayılan arka uç (MSMF) yerleşik kamerada sık takılır
+            # ve açılışı 10+ sn sürdürebilir; DirectShow güvenilir çalışır.
+            # macOS/Linux'ta varsayılan arka uç doğrudur.
+            arka_uc = cv2.CAP_DSHOW if sys.platform == "win32" else cv2.CAP_ANY
+            yakalayici = cv2.VideoCapture(kaynak, arka_uc)
+        else:
+            yakalayici = cv2.VideoCapture(kaynak, cv2.CAP_FFMPEG)
         if not yakalayici.isOpened():
             yakalayici.release()
             self.kaynak_hatasi = (

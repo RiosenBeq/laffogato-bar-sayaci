@@ -11,3 +11,7 @@ supervision==0.25.1
 pytest
 httpx
 ruff
+
+# Windows'ta saat dilimi veritabanı işletim sistemiyle GELMEZ; bu paket
+# olmadan Europe/Istanbul bulunamaz (kod yedeğe düşer ama doğrusu budur)
+tzdata; sys_platform == "win32"

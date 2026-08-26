@@ -56,6 +56,27 @@ kadar **hangi tarafta durduğunu** sayar. Bardak kaybolunca karar verilir:
 - Nesne tanıtma bir **model eğitimi değildir**: renk + desen parmak izi
   karşılaştırmasıdır. Düz beyaz fincanlarda yalnız renge dayanır.
 
+## Platform ve Docker
+
+| | Mac / Windows (çift tık) | Docker (Mac/Win) | Docker (Linux sunucu) |
+|---|---|---|---|
+| Arayüz, video dosyası, **RTSP kamera** | ✅ | ✅ | ✅ |
+| **Bilgisayarın kendi kamerası** | ✅ | ❌ Docker Desktop kamerayı veremez | ⚠️ USB kamera, ayar gerekir |
+| GPU hızlandırma | ❌ / ⚠️ WSL2 | ❌ | ✅ NVIDIA |
+| 7/24 kendiliğinden çalışma | ⚠️ pencere açık kalmalı | ✅ | ✅ |
+
+Docker ile çalıştırmak için:
+
+```bash
+cp .env.example .env
+bash models/indir.sh      # model indirilmeden imaj DERLENMEZ (bilerek)
+docker compose up -d
+docker compose logs -f
+```
+
+`veri/` klasörü ve `.env` container dışında durur; container silinse de
+veriler kaybolmaz. Ayrıntılı kılavuz: fabrika projesindeki `NASIL-CALISIR.md`.
+
 ## Test
 
 ```bash
