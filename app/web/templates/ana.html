@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Laffogato — Bar Sayacı ({{ gun_etiketi }})</title>
+  <link rel="stylesheet" href="/static/stil.css">
+</head>
+<body>
+<header>
+  <div class="cubuk">
+    <h1>Laffogato <span class="ince">bar sayacı</span> <span class="etiket">DEMO</span></h1>
+    <nav class="ust-nav">
+      <a href="/" class="aktif">Sayaç</a>
+      <a href="/kutuphane">Kütüphane</a>
+      <a href="/tarama">Kare tarama</a>
+    </nav>
+    <div class="durum">
+      <span class="nokta {{ 'yesil' if durum == 'canlı' else 'kirmizi' }}"></span>
+      <span id="durum-metni">{{ durum }}</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+  {% if model_hatasi %}<div class="uyari">{{ model_hatasi }}</div>{% endif %}
+  {% if kaynak_hatasi %}<div class="uyari"><pre>{{ kaynak_hatasi }}</pre></div>{% endif %}
+
+  <section class="sayilar">
+    <div class="sayi-kutu ana">
+      <div class="sayi" id="s-toplam">{{ ozet.toplam }}</div>
+      <div class="etiket-metin">bardak yapıldı</div>
+      <div class="alt">{{ gun_etiketi }}</div>
+    </div>
+    <div class="sayi-kutu">
+      <div class="sayi yesil-metin" id="s-musteri">{{ ozet.musteri }}</div>
+      <div class="etiket-metin">müşteri içti</div>
+      <div class="alt">%<span id="s-musteri-yuzde">{{ musteri_yuzde }}</span></div>
+    </div>
+    <div class="sayi-kutu">
+      <div class="sayi turuncu-metin" id="s-barista">{{ ozet.barista }}</div>
+      <div class="etiket-metin">barista kendine</div>
+      <div class="alt">%<span id="s-barista-yuzde">{{ barista_yuzde }}</span></div>
+    </div>
+    <div class="sayi-kutu sonuk">
+      <div class="sayi" id="s-belirsiz">{{ ozet.belirsiz }}</div>
+      <div class="etiket-metin">belirsiz</div>
+      <div class="alt">karar verilemedi</div>
+    </div>
+  </section>
+
+  <div class="izgara">
+    <section class="kart">
+      <h2>Canlı bar görüntüsü
+        <span class="rozet gri">şu an: <span id="s-canli">{{ canli_bardak }}</span> bardak,
+          <span id="s-kisi">{{ canli_kisi }}</span> kişi</span>
+      </h2>
+      <div class="cizim-alani">
+        <img id="onizleme" src="/onizleme.jpg" alt="bar görüntüsü">
+        <canvas id="tuval"></canvas>
+      </div>
+      <p class="not" id="tuval-not">
+        Turuncu kutu = bardak. Yeşil alan = müşteri tarafı, turuncu alan = barista tarafı.
+      </p>
+    </section>
+
+    <section class="kart">
+      <h2>Bölgeler</h2>
+      <p class="not">Sistem, bardağın hangi tarafta vakit geçirdiğine bakarak
+        karar verir. İki alanı bir kez çizmeniz yeterli.</p>
+
+      <div class="bolge-satiri">
+        <span class="kutucuk yesil"></span>
+        <b>Müşteri tarafı</b>
+        {% if bolge_musteri_var %}<span class="rozet yesil">çizildi</span>
+        {% else %}<span class="rozet gri">çizilmedi</span>{% endif %}
+      </div>
+      <div class="satir-form">
+        <button class="dugme ikincil kucuk" data-ciz="musteri">Çiz</button>
+        {% if bolge_musteri_var %}
+        <form method="post" action="/bolge/musteri/sil"><button class="dugme sade kucuk">Sil</button></form>
+        {% endif %}
+      </div>
+
+      <div class="bolge-satiri">
+        <span class="kutucuk turuncu"></span>
+        <b>Barista tarafı</b>
+        {% if bolge_barista_var %}<span class="rozet yesil">çizildi</span>
+        {% else %}<span class="rozet gri">çizilmedi</span>{% endif %}
+      </div>
+      <div class="satir-form">
+        <button class="dugme ikincil kucuk" data-ciz="barista">Çiz</button>
+        {% if bolge_barista_var %}
+        <form method="post" action="/bolge/barista/sil"><button class="dugme sade kucuk">Sil</button></form>
+        {% endif %}
+      </div>
+
+      <form method="post" action="/bolge" id="bolge-form" class="satir-form gizli">
+        <input type="hidden" name="taraf" id="taraf">
+        <input type="hidden" name="poligon" id="poligon">
+        <button class="dugme" id="bolge-kaydet">Bölgeyi Kaydet</button>
+        <button type="button" class="dugme sade" id="bolge-iptal">İptal</button>
+      </form>
+
+      <h3>Tespit hassasiyeti</h3>
+      <form method="post" action="/ayarlar/hassasiyet" class="satir-form">
+        <input name="deger" value="{{ hassasiyet }}" size="5">
+        <button class="dugme kucuk">Kaydet</button>
+      </form>
+      <p class="not">Bardak küçük bir nesnedir. Değer <b>düşükse</b> daha çok bardak
+        yakalanır ama yanlış tespit artar; <b>yüksekse</b> yalnız çok net bardaklar
+        sayılır. 0,30 iyi bir başlangıç.</p>
+
+      <h3>Kamera</h3>
+      <p class="not">Şu an: <code>{{ kaynak }}</code><br>
+        Değiştirmek için <b>.env</b> dosyasındaki <b>KAYNAK</b> satırı:
+        <code>0</code> bilgisayar kamerası, <code>rtsp://…</code> kafedeki IP kamera.</p>
+    </section>
+  </div>
+
+  {% if saatlik %}
+  <section class="kart">
+    <h2>Saatlere göre dağılım</h2>
+    <div class="sutunlar">
+      {% for s in saatlik %}
+      <div class="sutun-kutu">
+        <div class="sutun" style="height: {{ (s.adet / en_yuksek * 90) | round | int }}px"
+             title="{{ s.adet }} bardak"></div>
+        <span>{{ s.saat }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="not">Saatler Türkiye saatine göredir.</p>
+  </section>
+  {% endif %}
+
+  <section class="kart">
+    <h2>Bugünün bardakları</h2>
+    {% if bardaklar %}
+    <div class="bardak-izgara">
+      {% for b in bardaklar %}
+      <div class="bardak-kart {{ b.kime }}">
+        {% if b.foto %}<img src="/gorsel/{{ b.foto }}" alt="bardak">
+        {% else %}<div class="foto-yok">görüntü yok</div>{% endif %}
+        <div class="bardak-alt">
+          <b>{{ b.saat }}</b> · {{ b.kime_adi }}
+          <div class="kucuk-metin">müşteri {{ b.musteri }} / barista {{ b.barista }} gözlem</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="bos">Henüz bardak sayılmadı. Kamera bara bakıyorsa ve bölgeler
+      çizildiyse, hazırlanan bardaklar burada birikecek.</p>
+    {% endif %}
+  </section>
+
+  <section class="kart">
+    <h2>Gün ve rapor</h2>
+    <form method="get" action="/" class="satir-form">
+      <select name="gun">
+        <option value="">Bugün</option>
+        {% for g in gunler %}
+        <option value="{{ g.gun }}" {% if g.gun == gun %}selected{% endif %}>{{ g.etiket }}</option>
+        {% endfor %}
+      </select>
+      <button class="dugme ikincil">Göster</button>
+      <a class="dugme ikincil" href="/rapor.csv?gun={{ gun }}">CSV indir</a>
+    </form>
+    <form method="post" action="/sifirla" class="satir-form"
+          onsubmit="return confirm('{{ gun_etiketi }} gününün sayımı silinsin mi?')">
+      <input type="hidden" name="gun" value="{{ gun }}">
+      <button class="dugme tehlike kucuk">Bu günün sayımını sıfırla</button>
+    </form>
+  </section>
+
+  <p class="dipnot">
+    <b>Nasıl sayıyor:</b> Kamera bardakları tanır ve her birine bir takip numarası verir.
+    Bardak, kadrajdan çıkana kadar hangi tarafta durduğu sayılır; çıktığında
+    "müşteriye gitti" ya da "barista kendine yaptı" kararı verilir. Karar için
+    yeterli kanıt yoksa <b>belirsiz</b> yazar — tahmin yürütülmez.
+    <br><b>Sınırlar (demo):</b> hazır model genel amaçlıdır; kafenin kendi
+    bardaklarıyla eğitilirse isabet artar. Üst üste duran ya da elle kapatılan
+    bardaklar kaçabilir; tezgâhta uzun süre bekleyen bardak yeniden sayılabilir.
+  </p>
+</main>
+
+<script>
+setInterval(function () {
+  fetch("/onizleme.jpg", { cache: "no-store" })
+    .then(function (y) { return y.status === 204 ? null : y.blob(); })
+    .then(function (v) {
+      if (!v) return;
+      var img = document.getElementById("onizleme");
+      var eski = img.dataset.url;
+      img.src = URL.createObjectURL(v);
+      if (eski) URL.revokeObjectURL(eski);
+      img.dataset.url = img.src;
+    }).catch(function () {});
+}, 1000);
+
+setInterval(function () {
+  fetch("/canli?gun={{ gun }}").then(function (y) { return y.json(); }).then(function (v) {
+    document.getElementById("s-toplam").textContent = v.toplam;
+    document.getElementById("s-musteri").textContent = v.musteri;
+    document.getElementById("s-barista").textContent = v.barista;
+    document.getElementById("s-belirsiz").textContent = v.belirsiz;
+    document.getElementById("s-canli").textContent = v.canli_bardak;
+    document.getElementById("s-kisi").textContent = v.canli_kisi;
+    document.getElementById("durum-metni").textContent = v.durum;
+    var t = v.toplam || 1;
+    document.getElementById("s-musteri-yuzde").textContent = Math.round(v.musteri * 100 / t);
+    document.getElementById("s-barista-yuzde").textContent = Math.round(v.barista * 100 / t);
+  }).catch(function () {});
+}, 2000);
+</script>
+<script src="/static/bolge.js"></script>
+</body>
+</html>

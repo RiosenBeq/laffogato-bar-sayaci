@@ -1,0 +1,104 @@
+/* Laffogato — sıcak kahve tonlu sade arayüz */
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+       background: #faf8f5; color: #2b1d14; }
+
+header { background: #3b2416; color: #f7f1ea; }
+.cubuk { max-width: 1080px; margin: 0 auto; padding: 14px 16px; display: flex;
+         align-items: center; justify-content: space-between; gap: 16px; }
+.cubuk h1 { margin: 0; font-size: 1.15rem; font-weight: 600; letter-spacing: 0.01em; }
+.ince { font-weight: 400; color: #d6c3b2; font-size: 0.9rem; }
+.etiket { background: #b45309; color: #fff; font-size: 0.62rem; padding: 2px 6px;
+          border-radius: 4px; vertical-align: middle; }
+.durum { font-size: 0.85rem; color: #d6c3b2; display: flex; align-items: center; gap: 6px; }
+.nokta { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.nokta.yesil { background: #22c55e; }
+.nokta.kirmizi { background: #ef4444; }
+
+main { max-width: 1080px; margin: 20px auto; padding: 0 16px; display: grid; gap: 16px; }
+
+.sayilar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.sayi-kutu { background: #fff; border: 1px solid #ecdfd3; border-radius: 12px; padding: 16px 18px; }
+.sayi-kutu.ana { background: #3b2416; color: #f7f1ea; border-color: #3b2416; }
+.sayi-kutu.ana .etiket-metin, .sayi-kutu.ana .alt { color: #d6c3b2; }
+.sayi-kutu.sonuk { opacity: 0.75; }
+.sayi { font-size: 2.3rem; font-weight: 700; line-height: 1; }
+.yesil-metin { color: #15803d; }
+.turuncu-metin { color: #c2410c; }
+.etiket-metin { color: #6b4f3a; font-size: 0.9rem; margin-top: 4px; }
+.alt { color: #a1887a; font-size: 0.78rem; margin-top: 2px; }
+
+.izgara { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; }
+@media (max-width: 880px) { .izgara { grid-template-columns: 1fr; } }
+
+.kart { background: #fff; border: 1px solid #ecdfd3; border-radius: 12px; padding: 16px 20px; }
+.kart h2 { margin: 0 0 12px; font-size: 1.02rem; border-bottom: 1px solid #f3e9e0;
+           padding-bottom: 8px; display: flex; justify-content: space-between;
+           align-items: center; gap: 10px; flex-wrap: wrap; }
+.kart h3 { margin: 16px 0 6px; font-size: 0.92rem; }
+
+.cizim-alani { position: relative; }
+.cizim-alani img { width: 100%; display: block; border-radius: 8px; background: #2b1d14;
+                   min-height: 180px; }
+.cizim-alani canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cizim-alani canvas.aktif { cursor: crosshair; }
+
+.not { color: #6b4f3a; font-size: 0.83rem; margin: 6px 0; }
+.bos { color: #8a705c; font-style: italic; }
+.kucuk-metin { color: #a1887a; font-size: 0.74rem; }
+.dipnot { color: #6b4f3a; font-size: 0.8rem; line-height: 1.55; margin: 0 0 24px; }
+.uyari { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+         padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; }
+.uyari pre { margin: 0; white-space: pre-wrap; font: inherit; }
+
+.dugme { border: 0; border-radius: 7px; cursor: pointer; background: #7c4a25; color: #fff;
+         padding: 8px 14px; font-size: 0.87rem; text-decoration: none; display: inline-block; }
+.dugme:hover { background: #653a1c; }
+.dugme.ikincil { background: #fff; color: #2b1d14; border: 1px solid #dcc9b8; }
+.dugme.sade { background: none; color: #8a705c; border: 0; text-decoration: underline; }
+.dugme.tehlike { background: #b91c1c; }
+.dugme.kucuk { padding: 5px 11px; font-size: 0.8rem; }
+
+input, select { padding: 6px 9px; border: 1px solid #dcc9b8; border-radius: 6px;
+                font-size: 0.88rem; font-family: inherit; }
+.satir-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 12px; }
+.satir-form form { display: inline; }
+.gizli { display: none; }
+
+.rozet { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.rozet.yesil { background: #dcfce7; color: #15803d; }
+.rozet.gri { background: #f3e9e0; color: #6b4f3a; }
+
+.bolge-satiri { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.9rem; }
+.kutucuk { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.kutucuk.yesil { background: #5ac85a; }
+.kutucuk.turuncu { background: #d98c3c; }
+
+.sutunlar { display: flex; gap: 8px; align-items: flex-end; height: 120px; overflow-x: auto; }
+.sutun-kutu { display: flex; flex-direction: column; align-items: center; gap: 4px;
+              font-size: 0.72rem; color: #8a705c; }
+.sutun { width: 26px; background: #7c4a25; border-radius: 4px 4px 0 0; min-height: 3px; }
+
+.bardak-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                 gap: 10px; }
+.bardak-kart { border: 1px solid #ecdfd3; border-radius: 9px; overflow: hidden; }
+.bardak-kart.musteri { border-color: #86efac; }
+.bardak-kart.barista { border-color: #fdba74; }
+.bardak-kart img { width: 100%; height: 84px; object-fit: cover; display: block; background: #2b1d14; }
+.foto-yok { height: 84px; display: flex; align-items: center; justify-content: center;
+            color: #a1887a; font-size: 0.75rem; background: #f7f1ea; }
+.bardak-alt { padding: 6px 8px; font-size: 0.78rem; color: #4a3628; }
+code { background: #f7f1ea; padding: 1px 5px; border-radius: 4px; font-size: 0.82rem; }
+
+/* üst gezinme + kütüphane/tarama */
+.ust-nav { display: flex; gap: 4px; }
+.ust-nav a { color: #d6c3b2; text-decoration: none; padding: 6px 12px; border-radius: 6px;
+             font-size: 0.9rem; }
+.ust-nav a:hover { background: #4a2f1d; }
+.ust-nav a.aktif { background: #61402a; color: #fff; }
+.foto-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+               gap: 10px; margin: 10px 0; }
+.foto-kart { border: 1px solid #ecdfd3; border-radius: 8px; overflow: hidden; text-align: center; }
+.foto-kart img { width: 100%; height: 100px; object-fit: cover; display: block; }
+.tarama-gorsel { width: 100%; border-radius: 8px; margin: 8px 0; }
+input[type=file] { border: 1px dashed #dcc9b8; background: #fdfbf9; padding: 10px; width: 100%; }

@@ -1,0 +1,13 @@
+# Otopark Demo — gerekli paketler
+fastapi
+uvicorn[standard]
+jinja2
+python-dotenv
+python-multipart
+opencv-python
+onnxruntime
+numpy
+supervision==0.25.1
+pytest
+httpx
+ruff

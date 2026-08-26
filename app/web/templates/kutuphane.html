@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nesne Kütüphanesi — Laffogato</title>
+  <link rel="stylesheet" href="/static/stil.css">
+</head>
+<body>
+<header>
+  <div class="cubuk">
+    <h1>Laffogato <span class="ince">nesne kütüphanesi</span></h1>
+    <nav class="ust-nav">
+      <a href="/">Sayaç</a>
+      <a href="/kutuphane" class="aktif">Kütüphane</a>
+      <a href="/tarama">Kare tarama</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+
+  <section class="kart">
+    <h2>Kendi nesneni tanıt</h2>
+    <p class="not">
+      Sisteme "bu benim fincanım" diyebilmen için nesnenin <b>farklı açılardan</b>
+      3-8 fotoğrafını yükle: önden, yandan, üstten, varsa logolu yüzünden.
+      Sistem her fotoğraftan renk ve desen parmak izi çıkarır; taramada
+      bulduğu nesneleri bunlarla karşılaştırır.
+    </p>
+    <form method="post" action="/kutuphane/nesne" enctype="multipart/form-data" class="dikey-form">
+      <label>Nesne adı
+        <input name="ad" placeholder="örn. Laffogato fincanı" required>
+      </label>
+      <label>Fotoğraflar (birden çok seçebilirsin)
+        <input type="file" name="fotograflar" accept="image/*" multiple>
+      </label>
+      <button class="dugme">Nesneyi Ekle</button>
+    </form>
+    <p class="not"><b>İyi sonuç için:</b> nesne karede büyük ve net olsun,
+      arka plan sade olsun, farklı ışıklarda birkaç fotoğraf ekle.
+      Düz beyaz/desensiz nesnelerde ayırt etme zayıftır — o durumda renk
+      dışında tutunacak bir iz kalmaz.</p>
+  </section>
+
+  {% if nesneler %}
+    {% for n in nesneler %}
+    <section class="kart">
+      <h2>{{ n.ad }}
+        <span class="rozet {{ 'yesil' if n.fotolar|length >= 3 else 'gri' }}">
+          {{ n.fotolar|length }} fotoğraf</span>
+      </h2>
+      {% if n.fotolar|length < 3 %}
+      <p class="not">En az 3 farklı açı önerilir — tek açı, nesneyi başka
+        açıdan gördüğünde tanıyamamasına yol açar.</p>
+      {% endif %}
+      <div class="foto-izgara">
+        {% for f in n.fotolar %}
+        <div class="foto-kart">
+          <img src="/nesne-foto/{{ f.dosya }}" alt="referans">
+          <form method="post" action="/kutuphane/fotograf/{{ f.id }}/sil">
+            <button class="dugme sade kucuk">Kaldır</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      <form method="post" action="/kutuphane/{{ n.id }}/fotograf"
+            enctype="multipart/form-data" class="satir-form">
+        <input type="file" name="fotograflar" accept="image/*" multiple>
+        <button class="dugme kucuk">Fotoğraf Ekle</button>
+      </form>
+      <form method="post" action="/kutuphane/{{ n.id }}/sil" class="satir-form"
+            onsubmit="return confirm('{{ n.ad }} ve fotoğrafları silinsin mi?')">
+        <button class="dugme tehlike kucuk">Nesneyi Sil</button>
+      </form>
+    </section>
+    {% endfor %}
+  {% else %}
+  <section class="kart">
+    <p class="bos">Henüz tanıtılmış nesne yok. Yukarıdaki formla ilk nesneni ekle.</p>
+  </section>
+  {% endif %}
+
+  <p class="dipnot">
+    <b>Bu bir model eğitimi değildir.</b> Yüklediğin fotoğraflar bir yapay zeka
+    modelini yeniden eğitmez; nesnenin renk ve desen parmak izi olarak saklanır
+    ve taramada karşılaştırılır. Logosu/deseni belirgin nesnelerde iyi, düz ve
+    desensiz nesnelerde zayıf çalışır. Eşleşme skoru %{{ esik_yuzde }} altındaysa
+    sistem "eşleşme yok" der — yanlış isim yazmaz.
+  </p>
+</main>
+</body>
+</html>

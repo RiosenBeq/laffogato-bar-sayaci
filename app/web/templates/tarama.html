@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kare Tarama — Laffogato</title>
+  <link rel="stylesheet" href="/static/stil.css">
+</head>
+<body>
+<header>
+  <div class="cubuk">
+    <h1>Laffogato <span class="ince">kare tarama</span></h1>
+    <nav class="ust-nav">
+      <a href="/">Sayaç</a>
+      <a href="/kutuphane">Kütüphane</a>
+      <a href="/tarama" class="aktif">Kare tarama</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+
+  <section class="kart">
+    <h2>Kareleri tara</h2>
+    <p class="not">
+      Kameradan aldığın kareleri (veya telefonla çektiğin fotoğrafları) yükle;
+      sistem her karede ne gördüğünü işaretleyip gösterir. Kütüphanendeki
+      nesnelerle eşleşenler <b class="yesil-metin">yeşil</b>, yalnızca modelin
+      tanıdığı nesneler <b class="turuncu-metin">turuncu</b> çerçevelenir.
+      Canlı sayaçlara dokunmaz — burada rahatça deneyebilirsin.
+    </p>
+    <form method="post" action="/tarama" enctype="multipart/form-data" class="dikey-form">
+      <label>Kareler (aynı anda en fazla 12)
+        <input type="file" name="kareler" accept="image/*" multiple required>
+      </label>
+      <label>Eşleşme eşiği: yüzde
+        <input name="esik_yuzde" value="{{ esik_yuzde }}" size="4">
+        <span class="not">Düşürürsen daha çok eşleşme bulur ama yanlış eşleşme artar.</span>
+      </label>
+      <button class="dugme">Taramayı Başlat</button>
+    </form>
+    {% if nesne_sayisi == 0 %}
+    <p class="not">Kütüphanende tanıtılmış nesne yok; tarama yalnızca modelin
+      bildiği sınıfları (bardak, kişi) gösterir.
+      <a href="/kutuphane">Kendi nesneni tanıt →</a></p>
+    {% else %}
+    <p class="not">Kütüphanede {{ nesne_sayisi }} nesne var; her bulunan kutu
+      bunlarla karşılaştırılacak.</p>
+    {% endif %}
+  </section>
+
+  {% if sonuclar %}
+  <section class="kart">
+    <h2>Sonuç: {{ sonuclar|length }} kare tarandı
+      {% if toplam_eslesen %}<span class="rozet yesil">{{ toplam_eslesen }} eşleşme</span>{% endif %}
+    </h2>
+  </section>
+
+  {% for s in sonuclar %}
+  <section class="kart">
+    <h2>{{ s.dosya_adi }}
+      <span class="rozet {{ 'yesil' if s.eslesen_sayisi else 'gri' }}">
+        {{ s.bulgular|length }} nesne bulundu{% if s.eslesen_sayisi %},
+        {{ s.eslesen_sayisi }} eşleşti{% endif %}</span>
+    </h2>
+    {% if s.uyari %}<p class="not kirmizi-metin">{{ s.uyari }}</p>{% endif %}
+    {% if s.sonuc_gorseli %}
+    <img class="tarama-gorsel" src="/tarama-foto/{{ s.sonuc_gorseli }}" alt="tarama sonucu">
+    {% endif %}
+    {% if s.bulgular %}
+    <table>
+      <tr><th>Model sınıfı</th><th>Güven</th><th>Kütüphane eşleşmesi</th><th>Skor</th></tr>
+      {% for b in s.bulgular %}
+      <tr>
+        <td>{{ b.tip }}</td>
+        <td>%{{ (b.guven * 100) | round | int }}</td>
+        <td>{% if b.nesne_adi %}<b class="yesil-metin">{{ b.nesne_adi }}</b>
+            {% else %}<span class="not">eşleşme yok</span>{% endif %}</td>
+        <td>%{{ (b.skor * 100) | round | int }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+  </section>
+  {% endfor %}
+  {% endif %}
+
+  <p class="dipnot">
+    <b>Nasıl okunur:</b> "Model sınıfı" hazır modelin ne gördüğü (bardak, kişi…),
+    "Kütüphane eşleşmesi" ise senin tanıttığın nesnelerden hangisine benzediğidir.
+    Skor eşiğin altında kalırsa isim yazılmaz. Hiç kutu çıkmıyorsa nesne çok
+    küçük/bulanık olabilir: kamerayı yaklaştır ya da sayaç sayfasındaki
+    <b>tespit hassasiyetini</b> düşür.
+  </p>
+</main>
+</body>
+</html>
