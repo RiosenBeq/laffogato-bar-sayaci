@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kare Tarama — Laffogato</title>
-  <link rel="stylesheet" href="/static/stil.css">
+  <link rel="stylesheet" href="/static/stil.css?v=8">
 </head>
 <body>
 <header>
   <div class="cubuk">
-    <h1>Laffogato <span class="ince">kare tarama</span></h1>
+    <h1>☕ Laffogato <span class="ince">kare tarama</span></h1>
     <nav class="ust-nav">
       <a href="/">Sayaç</a>
       <a href="/kutuphane">Kütüphane</a>
@@ -22,22 +22,34 @@
   {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
 
   <section class="kart">
-    <h2>Kareleri tara</h2>
+    <h2>Fotoğraf veya video tara</h2>
     <p class="not">
-      Kameradan aldığın kareleri (veya telefonla çektiğin fotoğrafları) yükle;
-      sistem her karede ne gördüğünü işaretleyip gösterir. Kütüphanendeki
-      nesnelerle eşleşenler <b class="yesil-metin">yeşil</b>, yalnızca modelin
-      tanıdığı nesneler <b class="turuncu-metin">turuncu</b> çerçevelenir.
-      Canlı sayaçlara dokunmaz — burada rahatça deneyebilirsin.
+      Kameradan aldığın kareleri, telefonla çektiğin fotoğrafları <b>ya da kısa
+      bir videoyu</b> yükle; sistem ne gördüğünü işaretleyip gösterir. Videodan
+      eşit aralıklı kareler otomatik alınır. Kütüphanendeki nesnelerle eşleşenler
+      <b class="yesil-metin">yeşil</b>, yalnızca modelin tanıdığı nesneler
+      <b class="turuncu-metin">turuncu</b> çerçevelenir. Canlı sayaçlara dokunmaz —
+      burada rahatça deneyebilirsin.
     </p>
     <form method="post" action="/tarama" enctype="multipart/form-data" class="dikey-form">
-      <label>Kareler (aynı anda en fazla 12)
-        <input type="file" name="kareler" accept="image/*" multiple required>
+      <div class="yukleme" data-en-cok="12" data-video="1" data-zorunlu="1">
+        <div class="birak-alani">
+          <input type="file" name="kareler"
+                 accept="image/jpeg,image/png,image/webp,image/bmp,video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm"
+                 multiple>
+          <div class="birak-ikon">🖼️ 🎬</div>
+          <div class="birak-baslik"><u>Dosya seç</u> ya da buraya sürükle</div>
+          <span class="birak-detay">Fotoğraf: JPG, PNG, WEBP (en fazla 12 MB) ·
+            Video: MP4, MOV (en fazla 200 MB) · bir taramada en fazla {{ en_cok_kare }} kare işlenir</span>
+        </div>
+        <div class="secilenler" hidden></div>
+        <p class="yukleme-mesaj" hidden></p>
+      </div>
+      <label>Eşleşme eşiği (yüzde)
+        <input name="esik_yuzde" type="number" min="5" max="95" value="{{ esik_yuzde }}"
+               inputmode="numeric" style="max-width: 110px">
       </label>
-      <label>Eşleşme eşiği: yüzde
-        <input name="esik_yuzde" value="{{ esik_yuzde }}" size="4">
-        <span class="not">Düşürürsen daha çok eşleşme bulur ama yanlış eşleşme artar.</span>
-      </label>
+      <p class="not">Eşiği düşürürsen daha çok eşleşme bulur ama yanlış eşleşme artar.</p>
       <button class="dugme">Taramayı Başlat</button>
     </form>
     {% if nesne_sayisi == 0 %}
@@ -55,6 +67,7 @@
     <h2>Sonuç: {{ sonuclar|length }} kare tarandı
       {% if toplam_eslesen %}<span class="rozet yesil">{{ toplam_eslesen }} eşleşme</span>{% endif %}
     </h2>
+    {% if kirpilan_uyari %}<p class="not kirmizi-metin">{{ kirpilan_uyari }}</p>{% endif %}
   </section>
 
   {% for s in sonuclar %}
@@ -66,7 +79,7 @@
     </h2>
     {% if s.uyari %}<p class="not kirmizi-metin">{{ s.uyari }}</p>{% endif %}
     {% if s.sonuc_gorseli %}
-    <img class="tarama-gorsel" src="/tarama-foto/{{ s.sonuc_gorseli }}" alt="tarama sonucu">
+    <img class="tarama-gorsel" src="/tarama-foto/{{ s.sonuc_gorseli }}" alt="tarama sonucu" loading="lazy">
     {% endif %}
     {% if s.bulgular %}
     <table>
@@ -94,5 +107,6 @@
     <b>tespit hassasiyetini</b> düşür.
   </p>
 </main>
+<script src="/static/yukleme.js?v=8"></script>
 </body>
 </html>

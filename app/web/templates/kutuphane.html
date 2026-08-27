@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nesne Kütüphanesi — Laffogato</title>
-  <link rel="stylesheet" href="/static/stil.css">
+  <link rel="stylesheet" href="/static/stil.css?v=8">
 </head>
 <body>
 <header>
   <div class="cubuk">
-    <h1>Laffogato <span class="ince">nesne kütüphanesi</span></h1>
+    <h1>☕ Laffogato <span class="ince">nesne kütüphanesi</span></h1>
     <nav class="ust-nav">
       <a href="/">Sayaç</a>
       <a href="/kutuphane" class="aktif">Kütüphane</a>
@@ -20,27 +20,44 @@
 
 <main>
   {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+  {% if mesaj %}<div class="basari">{{ mesaj }}</div>{% endif %}
 
   <section class="kart">
-    <h2>Kendi nesneni tanıt</h2>
+    <h2>Kendi nesneni tanıt
+      <span class="ipucu" tabindex="0">?<span class="balon balon-sag"><b>Nesne nasıl tanıtılır?</b>
+        <ol><li>Nesnenin fotoğrafını farklı açılardan çekin: önden, yandan, üstten,
+          varsa logolu yüzünden — toplam 3-8 fotoğraf.</li>
+        <li>Nesne karede büyük ve net olsun; arka plan sade olsun.</li>
+        <li>Farklı ışıklarda (gündüz/akşam) birer fotoğraf ekleyin.</li>
+        <li>Ad verip "Nesneyi Ekle"ye basın; sonra <b>Kare tarama</b>da deneyin.</li></ol>
+        Sistem fotoğraflardan renk ve desen parmak izi çıkarır — bu bir model
+        eğitimi değildir. Düz, desensiz nesnelerde ayırt etme zayıftır.
+      </span></span></h2>
     <p class="not">
-      Sisteme "bu benim fincanım" diyebilmen için nesnenin <b>farklı açılardan</b>
-      3-8 fotoğrafını yükle: önden, yandan, üstten, varsa logolu yüzünden.
-      Sistem her fotoğraftan renk ve desen parmak izi çıkarır; taramada
-      bulduğu nesneleri bunlarla karşılaştırır.
+      Sisteme "bu benim fincanım" diyebilmen için nesnenin <b>farklı
+      açılardan</b> 3-8 fotoğrafını yükle: önden, yandan, üstten, varsa logolu
+      yüzünden. Sistem her fotoğraftan renk ve desen parmak izi çıkarır;
+      taramada bulduğu nesneleri bunlarla karşılaştırır.
     </p>
     <form method="post" action="/kutuphane/nesne" enctype="multipart/form-data" class="dikey-form">
       <label>Nesne adı
-        <input name="ad" placeholder="örn. Laffogato fincanı" required>
+        <input name="ad" placeholder="örn. Laffogato fincanı" required maxlength="60">
       </label>
-      <label>Fotoğraflar (birden çok seçebilirsin)
-        <input type="file" name="fotograflar" accept="image/*" multiple>
-      </label>
+      <div class="yukleme" data-en-cok="12" data-zorunlu="1">
+        <div class="birak-alani">
+          <input type="file" name="fotograflar" accept="image/jpeg,image/png,image/webp,image/bmp" multiple>
+          <div class="birak-ikon">🖼️</div>
+          <div class="birak-baslik"><u>Fotoğraf seç</u> ya da buraya sürükle</div>
+          <span class="birak-detay">JPG, PNG veya WEBP · her biri en fazla 12 MB · farklı açılardan 3-8 fotoğraf önerilir</span>
+        </div>
+        <div class="secilenler" hidden></div>
+        <p class="yukleme-mesaj" hidden></p>
+      </div>
       <button class="dugme">Nesneyi Ekle</button>
     </form>
     <p class="not"><b>İyi sonuç için:</b> nesne karede büyük ve net olsun,
       arka plan sade olsun, farklı ışıklarda birkaç fotoğraf ekle.
-      Düz beyaz/desensiz nesnelerde ayırt etme zayıftır — o durumda renk
+      Düz ve desensiz nesnelerde ayırt etme zayıftır — o durumda renk
       dışında tutunacak bir iz kalmaz.</p>
   </section>
 
@@ -58,7 +75,7 @@
       <div class="foto-izgara">
         {% for f in n.fotolar %}
         <div class="foto-kart">
-          <img src="/nesne-foto/{{ f.dosya }}" alt="referans">
+          <img src="/nesne-foto/{{ f.dosya }}" alt="{{ n.ad }} referans fotoğrafı" loading="lazy">
           <form method="post" action="/kutuphane/fotograf/{{ f.id }}/sil">
             <button class="dugme sade kucuk">Kaldır</button>
           </form>
@@ -66,9 +83,18 @@
         {% endfor %}
       </div>
       <form method="post" action="/kutuphane/{{ n.id }}/fotograf"
-            enctype="multipart/form-data" class="satir-form">
-        <input type="file" name="fotograflar" accept="image/*" multiple>
-        <button class="dugme kucuk">Fotoğraf Ekle</button>
+            enctype="multipart/form-data" class="dikey-form">
+        <div class="yukleme" data-en-cok="12" data-zorunlu="1">
+          <div class="birak-alani">
+            <input type="file" name="fotograflar" accept="image/jpeg,image/png,image/webp,image/bmp" multiple>
+            <div class="birak-ikon">➕</div>
+            <div class="birak-baslik"><u>Fotoğraf ekle</u> ya da buraya sürükle</div>
+            <span class="birak-detay">Yeni açılar tanımayı güçlendirir</span>
+          </div>
+          <div class="secilenler" hidden></div>
+          <p class="yukleme-mesaj" hidden></p>
+        </div>
+        <button class="dugme kucuk">Fotoğrafları Yükle</button>
       </form>
       <form method="post" action="/kutuphane/{{ n.id }}/sil" class="satir-form"
             onsubmit="return confirm('{{ n.ad }} ve fotoğrafları silinsin mi?')">
@@ -90,5 +116,6 @@
     sistem "eşleşme yok" der — yanlış isim yazmaz.
   </p>
 </main>
+<script src="/static/yukleme.js?v=8"></script>
 </body>
 </html>

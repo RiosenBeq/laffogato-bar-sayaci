@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Laffogato — Bar Sayacı ({{ gun_etiketi }})</title>
-  <link rel="stylesheet" href="/static/stil.css">
+  <link rel="stylesheet" href="/static/stil.css?v=8">
 </head>
 <body>
 <header>
   <div class="cubuk">
-    <h1>Laffogato <span class="ince">bar sayacı</span> <span class="etiket">DEMO</span></h1>
+    <h1>☕ Laffogato <span class="ince">bar sayacı</span> <span class="etiket">DEMO</span></h1>
     <nav class="ust-nav">
       <a href="/" class="aktif">Sayaç</a>
       <a href="/kutuphane">Kütüphane</a>
       <a href="/tarama">Kare tarama</a>
     </nav>
-    <div class="durum">
+    <div class="durum" aria-live="polite">
       <span class="nokta {{ 'yesil' if durum == 'canlı' else 'kirmizi' }}"></span>
       <span id="durum-metni">{{ durum }}</span>
     </div>
@@ -24,6 +24,7 @@
 
 <main>
   {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+  {% if mesaj %}<div class="basari">{{ mesaj }}</div>{% endif %}
   {% if model_hatasi %}<div class="uyari">{{ model_hatasi }}</div>{% endif %}
   {% if kaynak_hatasi %}<div class="uyari"><pre>{{ kaynak_hatasi }}</pre></div>{% endif %}
 
@@ -50,6 +51,48 @@
     </div>
   </section>
 
+  <!-- KURULUM KILAVUZU -->
+  {% set kamera_ok = durum == 'canlı' %}
+  {% set kurulum_tamam = kamera_ok and bolge_musteri_var and bolge_barista_var %}
+  <details class="kart" {% if not kurulum_tamam %}open{% endif %}>
+    <summary>Kurulum kılavuzu — sayacı 3 adımda hazırla</summary>
+    <div class="kilavuz">
+      <div class="kilavuz-adim {{ 'tamam' if kamera_ok else '' }}">
+        <span class="kilavuz-no"><span>1</span></span>
+        <span class="kilavuz-metin"><b>Kameranı bağla</b>
+          <small>Aşağıdaki "Görüntü kaynağı" bölümünden bilgisayar kamerası, IP kamera
+          ya da video dosyası seç; "Bağlantıyı Sına" ile görüntüyü doğrula, sonra Kaydet.</small>
+        </span>
+        <span class="rozet {{ 'yesil' if kamera_ok else 'gri' }}">{{ 'bağlı' if kamera_ok else 'bekliyor' }}</span>
+      </div>
+      <div class="kilavuz-adim {{ 'tamam' if bolge_musteri_var and bolge_barista_var else '' }}">
+        <span class="kilavuz-no"><span>2</span></span>
+        <span class="kilavuz-metin"><b>Müşteri ve barista bölgelerini çiz</b>
+          <small>Sistem, bardağın hangi tarafta durduğuna bakarak karar verir.
+          "Bölgeler" bölümündeki <b>?</b> işaretinde adım adım anlatım var.</small>
+        </span>
+        <span class="rozet {{ 'yesil' if bolge_musteri_var and bolge_barista_var else 'gri' }}">
+          {{ 'çizildi' if bolge_musteri_var and bolge_barista_var else 'bekliyor' }}</span>
+      </div>
+      <div class="kilavuz-adim tamam">
+        <span class="kilavuz-no"><span>3</span></span>
+        <span class="kilavuz-metin"><b>Tespit hassasiyetini ayarla</b>
+          <small>Bardak küçük bir nesnedir; 0,30 iyi bir başlangıçtır.
+          Bardaklar kaçıyorsa düşür, yanlış tespit artıyorsa yükselt.</small>
+        </span>
+        <span class="rozet yesil">{{ hassasiyet }}</span>
+      </div>
+      <div class="kilavuz-adim {{ 'tamam' if nesne_sayisi else '' }}">
+        <span class="kilavuz-no"><span>+</span></span>
+        <span class="kilavuz-metin"><b>Kendi bardaklarını tanıt <span class="kucuk-metin">(isteğe bağlı)</span></b>
+          <small>"Bu bizim Laffogato fincanımız" diyebilmek için 3-8 fotoğraf yükle.</small>
+        </span>
+        {% if nesne_sayisi %}<span class="rozet yesil">{{ nesne_sayisi }} nesne</span>{% endif %}
+        <a class="dugme ikincil kucuk" href="/kutuphane">Kütüphaneyi aç</a>
+      </div>
+    </div>
+  </details>
+
   <div class="izgara">
     <section class="kart">
       <h2>Canlı bar görüntüsü
@@ -59,6 +102,7 @@
       <div class="cizim-alani">
         <img id="onizleme" src="/onizleme.jpg" alt="bar görüntüsü">
         <canvas id="tuval"></canvas>
+        <div class="kilavuz-yazi" id="cizim-kilavuz"></div>
       </div>
       <p class="not" id="tuval-not">
         Turuncu kutu = bardak. Yeşil alan = müşteri tarafı, turuncu alan = barista tarafı.
@@ -66,7 +110,16 @@
     </section>
 
     <section class="kart">
-      <h2>Bölgeler</h2>
+      <h2>Bölgeler
+        <span class="ipucu" tabindex="0">?<span class="balon balon-sag"><b>Bölgeler nasıl çizilir?</b>
+          <ol><li>"Çiz"e basın (önce müşteri tarafı).</li>
+          <li>Görüntüde alanın köşelerine sırayla tıklayın — en az 3 köşe.</li>
+          <li>Fare gezerken kenar canlı önizlenir; bitirmek için İLK (büyük) noktaya
+            tıklayın ya da "Bölgeyi Kaydet"e basın.</li>
+          <li>Aynısını barista tarafı için yapın.</li></ol>
+          Yanlış köşe koyarsanız "Geri Al"; baştan başlamak için Esc.
+          Müşteri tarafı tezgâhın önü, barista tarafı arkasıdır.
+        </span></span></h2>
       <p class="not">Sistem, bardağın hangi tarafta vakit geçirdiğine bakarak
         karar verir. İki alanı bir kez çizmeniz yeterli.</p>
 
@@ -99,41 +152,143 @@
       <form method="post" action="/bolge" id="bolge-form" class="satir-form gizli">
         <input type="hidden" name="taraf" id="taraf">
         <input type="hidden" name="poligon" id="poligon">
+        <span class="cizim-durum" id="cizim-durum"></span>
+        <button type="button" class="dugme ikincil kucuk" id="cizim-geri" disabled>↩ Geri Al</button>
         <button class="dugme" id="bolge-kaydet">Bölgeyi Kaydet</button>
-        <button type="button" class="dugme sade" id="bolge-iptal">İptal</button>
+        <button type="button" class="dugme sade" id="bolge-iptal">İptal (Esc)</button>
       </form>
 
       <h3>Tespit hassasiyeti</h3>
-      <form method="post" action="/ayarlar/hassasiyet" class="satir-form">
-        <input name="deger" value="{{ hassasiyet }}" size="5">
+      <form method="post" action="/ayarlar/hassasiyet" class="dikey-form">
+        <span class="kaydirici">
+          <input type="range" name="deger" min="0.15" max="0.9" step="0.01"
+                 value="{{ hassasiyet_sayi }}" aria-label="tespit hassasiyeti">
+          <span class="kaydirici-deger">{{ hassasiyet }}</span>
+        </span>
         <button class="dugme kucuk">Kaydet</button>
       </form>
       <p class="not">Bardak küçük bir nesnedir. Değer <b>düşükse</b> daha çok bardak
         yakalanır ama yanlış tespit artar; <b>yüksekse</b> yalnız çok net bardaklar
         sayılır. 0,30 iyi bir başlangıç.</p>
+      <label class="satir-form onay-kutusu">
+        <input type="checkbox" data-ses-anahtari>
+        Yeni bardak sayıldığında sesli bildirim çal
+      </label>
 
-      <h3>Kamera</h3>
-      <p class="not">Şu an: <code>{{ kaynak }}</code><br>
-        Değiştirmek için <b>.env</b> dosyasındaki <b>KAYNAK</b> satırı:
-        <code>0</code> bilgisayar kamerası, <code>rtsp://…</code> kafedeki IP kamera.</p>
+      <h3>Görüntü kaynağı
+        <span class="ipucu" tabindex="0">?<span class="balon balon-sag"><b>Hangisini seçmeliyim?</b>
+          <ul><li><b>Bilgisayar kamerası:</b> en kolay deneme. 0 = dahili kamera,
+            1 = USB ile takılı ikinci kamera.</li>
+          <li><b>IP / güvenlik kamerası:</b> adres genelde şöyledir:
+            rtsp://kullanici:sifre@192.168.1.50:554/stream1 — doğru adresi kameranın
+            telefon uygulamasında ya da kullanım kılavuzunda bulabilirsiniz.</li>
+          <li><b>Video dosyası:</b> kayıtlı bir görüntüyü döngüde oynatır (deneme için ideal).</li></ul>
+          Önce "Bağlantıyı Sına" ile görüntü geldiğini doğrulayın, sonra Kaydet.
+        </span></span></h3>
+      <p class="not">Şu an: <code>{{ kaynak }}</code></p>
+      <form method="post" action="/ayarlar/kaynak" id="kaynak-form" class="dikey-form">
+        <div class="kaynak-secenekler">
+          <label class="kaynak-secenek">
+            <input type="radio" name="tur" value="kamera" {{ 'checked' if kaynak_tur == 'kamera' else '' }}>
+            <span class="kutu"><span class="simge">📷</span><b>Bilgisayar kamerası</b>
+              <small>dahili ya da USB kamera</small></span>
+          </label>
+          <label class="kaynak-secenek">
+            <input type="radio" name="tur" value="rtsp" {{ 'checked' if kaynak_tur == 'rtsp' else '' }}>
+            <span class="kutu"><span class="simge">🌐</span><b>IP kamera</b>
+              <small>kafedeki güvenlik kamerası (RTSP)</small></span>
+          </label>
+          <label class="kaynak-secenek">
+            <input type="radio" name="tur" value="dosya" {{ 'checked' if kaynak_tur == 'dosya' else '' }}>
+            <span class="kutu"><span class="simge">🎞️</span><b>Video dosyası</b>
+              <small>kayıtlı görüntüyle deneme</small></span>
+          </label>
+        </div>
+        <div class="kaynak-alan" data-tur="kamera">
+          <label>Kamera numarası
+            <input name="kamera_no" value="{{ kaynak_ham if kaynak_tur == 'kamera' else '0' }}"
+                   inputmode="numeric" style="max-width: 110px">
+          </label>
+          <span class="not">0 = bilgisayarın kendi kamerası, 1 = USB ile takılı ikinci kamera.
+            İlk açılışta macOS kamera izni sorar — "İzin Ver" deyin.</span>
+        </div>
+        <div class="kaynak-alan" data-tur="rtsp">
+          <label>Kamera adresi (RTSP)
+            <input name="rtsp_adres" value=""
+                   placeholder="rtsp://kullanici:sifre@192.168.1.50:554/stream1" autocomplete="off">
+          </label>
+          <span class="not">Adresi kameranın telefon uygulamasında ya da kılavuzunda bulabilirsiniz.
+            Güvenlik için kayıtlı adres burada gösterilmez; sınamak ya da değiştirmek
+            için adresi yeniden yazın.</span>
+        </div>
+        <div class="kaynak-alan" data-tur="dosya">
+          <label>Video dosyasının yolu
+            <input name="dosya_yolu" value="{{ kaynak_ham if kaynak_tur == 'dosya' else '' }}"
+                   placeholder="veri/kayit.mp4">
+          </label>
+          <span class="not">Proje klasörüne göre yol yazın (örn. veri/kayit.mp4). Hızlı bir deneme
+            için <a href="/tarama">Kare tarama</a> sayfasına da video yükleyebilirsiniz.</span>
+        </div>
+        <div class="satir-form">
+          <button type="button" class="dugme ikincil" id="kaynak-sina">Bağlantıyı Sına</button>
+          <button class="dugme">Kaydet ve Yeniden Başlat</button>
+        </div>
+        <div class="sina-sonuc" id="sina-sonuc"></div>
+      </form>
     </section>
   </div>
 
-  {% if saatlik %}
+  <!-- İSTATİSTİKLER -->
   <section class="kart">
-    <h2>Saatlere göre dağılım</h2>
-    <div class="sutunlar">
+    <h2>İstatistikler — {{ gun_etiketi }}</h2>
+    <div class="ist-izgara">
+      <div class="ist-kutu"><b>{{ ozet.toplam }}</b><span>bardak yapıldı</span></div>
+      <div class="ist-kutu"><b>%{{ musteri_yuzde }}</b><span>müşteri içti</span></div>
+      <div class="ist-kutu"><b>{{ en_yogun_saat or '—' }}</b><span>en yoğun saat</span></div>
+      <div class="ist-kutu"><b>{{ ozet.belirsiz }}</b><span>belirsiz karar</span></div>
+    </div>
+    {% if ozet.toplam %}
+    <h3>Müşteri / barista dağılımı</h3>
+    <div class="oran-cubugu">
+      {% if ozet.musteri %}<div class="oran-parca" style="width: {{ (ozet.musteri * 100 / ozet.toplam) | round | int }}%; background: #22c55e"></div>{% endif %}
+      {% if ozet.barista %}<div class="oran-parca" style="width: {{ (ozet.barista * 100 / ozet.toplam) | round | int }}%; background: #ea8c3c"></div>{% endif %}
+      {% if ozet.belirsiz %}<div class="oran-parca" style="width: {{ (ozet.belirsiz * 100 / ozet.toplam) | round | int }}%; background: #b9b3ab"></div>{% endif %}
+    </div>
+    <div class="oran-liste">
+      <span><i style="background: #22c55e"></i>müşteri <b>{{ ozet.musteri }}</b></span>
+      <span><i style="background: #ea8c3c"></i>barista <b>{{ ozet.barista }}</b></span>
+      <span><i style="background: #b9b3ab"></i>belirsiz <b>{{ ozet.belirsiz }}</b></span>
+    </div>
+    {% endif %}
+    {% if saatlik %}
+    <h3>Saatlere göre bardak</h3>
+    <div class="grafik">
       {% for s in saatlik %}
-      <div class="sutun-kutu">
-        <div class="sutun" style="height: {{ (s.adet / en_yuksek * 90) | round | int }}px"
-             title="{{ s.adet }} bardak"></div>
-        <span>{{ s.saat }}</span>
+      <div class="grafik-sutun">
+        <span class="deger">{{ s.adet }}</span>
+        <div class="grafik-cubuk" style="height: {{ (s.adet / en_yuksek * 100) | round | int }}%"
+             title="{{ s.saat }}:00 — {{ s.adet }} bardak"></div>
+        <small>{{ s.saat }}</small>
       </div>
       {% endfor %}
     </div>
     <p class="not">Saatler Türkiye saatine göredir.</p>
+    {% endif %}
+    {% if son7|length > 1 %}
+    <h3>Son 7 gün — bardak</h3>
+    <div class="grafik">
+      {% for g in son7 %}
+      <div class="grafik-sutun">
+        <span class="deger">{{ g.adet }}</span>
+        <div class="grafik-cubuk {{ '' if g.bugun else 'soluk' }}"
+             style="height: {{ (g.adet / son7_en_yuksek * 100) | round | int }}%"
+             title="{{ g.etiket }} — {{ g.adet }} bardak"></div>
+        <small>{{ g.etiket }}</small>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </section>
-  {% endif %}
 
   <section class="kart">
     <h2>Bugünün bardakları</h2>
@@ -175,6 +330,32 @@
     </form>
   </section>
 
+  <!-- TEKNOLOJİ -->
+  <details class="kart">
+    <summary>Bu sistem neyle çalışıyor?</summary>
+    <div class="kilavuz">
+      <div class="kilavuz-adim"><span class="kilavuz-no"><span>🧠</span></span>
+        <span class="kilavuz-metin"><b>Nesne tespiti: YOLOX (S / Tiny)</b>
+          <small>Her karede bardak ve kişiyi bulan hazır yapay zeka modeli; eldeki
+          en isabetli sürüm otomatik seçilir. ONNX Runtime ile bilgisayarın
+          işlemcisinde çalışır, internet gerektirmez.</small></span></div>
+      <div class="kilavuz-adim"><span class="kilavuz-no"><span>🎥</span></span>
+        <span class="kilavuz-metin"><b>Görüntü işleme: OpenCV</b>
+          <small>Kameradan/videodan kareleri okur, kutuları çizer, kanıt fotoğraflarını kaydeder.</small></span></div>
+      <div class="kilavuz-adim"><span class="kilavuz-no"><span>🔢</span></span>
+        <span class="kilavuz-metin"><b>Takip: ByteTrack (supervision)</b>
+          <small>Aynı bardağa kareler arasında aynı numarayı verir — her bardak bir kez sayılır.</small></span></div>
+      <div class="kilavuz-adim"><span class="kilavuz-no"><span>🎨</span></span>
+        <span class="kilavuz-metin"><b>Nesne eşleştirme: renk + desen parmak izi</b>
+          <small>Kütüphanedeki nesneler model eğitimi olmadan, renk histogramı ve
+          ORB desen özellikleriyle karşılaştırılır.</small></span></div>
+      <div class="kilavuz-adim"><span class="kilavuz-no"><span>🖥️</span></span>
+        <span class="kilavuz-metin"><b>Uygulama: FastAPI + SQLite + pywebview</b>
+          <small>Tek Python programı: web arayüzü, veritabanı (tek dosya) ve
+          masaüstü penceresi. Sunucu, bulut ya da abonelik yoktur; her şey bu bilgisayarda.</small></span></div>
+    </div>
+  </details>
+
   <p class="dipnot">
     <b>Nasıl sayıyor:</b> Kamera bardakları tanır ve her birine bir takip numarası verir.
     Bardak, kadrajdan çıkana kadar hangi tarafta durduğu sayılır; çıktığında
@@ -200,6 +381,7 @@ setInterval(function () {
     }).catch(function () {});
 }, 1000);
 
+var oncekiSayilar = null;
 setInterval(function () {
   fetch("/canli?gun={{ gun }}").then(function (y) { return y.json(); }).then(function (v) {
     document.getElementById("s-toplam").textContent = v.toplam;
@@ -212,9 +394,27 @@ setInterval(function () {
     var t = v.toplam || 1;
     document.getElementById("s-musteri-yuzde").textContent = Math.round(v.musteri * 100 / t);
     document.getElementById("s-barista-yuzde").textContent = Math.round(v.barista * 100 / t);
+    if (oncekiSayilar && window.Bildirim) {
+      if (v.musteri > oncekiSayilar.musteri) {
+        Bildirim.goster("<b>+" + (v.musteri - oncekiSayilar.musteri) +
+          " bardak</b> — müşteri içti ☕", "iyi", 4000);
+      }
+      if (v.barista > oncekiSayilar.barista) {
+        Bildirim.goster("<b>+" + (v.barista - oncekiSayilar.barista) +
+          " bardak</b> — barista kendine yaptı", "", 4000);
+      }
+      if (v.belirsiz > oncekiSayilar.belirsiz) {
+        Bildirim.goster("<b>+" + (v.belirsiz - oncekiSayilar.belirsiz) +
+          " bardak</b> — karar verilemedi (belirsiz)", "", 4000);
+      }
+      if (v.toplam > oncekiSayilar.toplam) Bildirim.sesCal();
+    }
+    oncekiSayilar = v;
   }).catch(function () {});
 }, 2000);
 </script>
-<script src="/static/bolge.js"></script>
+<script src="/static/bildirim.js?v=8"></script>
+<script src="/static/bolge.js?v=8"></script>
+<script src="/static/kaynak.js?v=8"></script>
 </body>
 </html>

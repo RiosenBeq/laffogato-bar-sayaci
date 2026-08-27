@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Giriş — Laffogato</title>
+  <link rel="stylesheet" href="/static/stil.css?v=8">
+</head>
+<body>
+<div class="giris-arkaplan">
+  <div class="giris-kutusu">
+    <h1>☕ Laffogato</h1>
+    <p class="not">Bu panel şifreyle korunuyor.</p>
+    {% if hata %}<div class="uyari">Şifre yanlış — yeniden deneyin.</div>{% endif %}
+    <form method="post" action="/giris">
+      <label>Panel şifresi
+        <input type="password" name="sifre" autofocus autocomplete="current-password">
+      </label>
+      <button class="dugme">Giriş</button>
+    </form>
+    <p class="kucuk-metin">Şifre, proje klasöründeki .env dosyasında
+      (PANEL_SIFRESI) yazılıdır.</p>
+  </div>
+</div>
+</body>
+</html>

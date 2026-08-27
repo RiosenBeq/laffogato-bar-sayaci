@@ -29,6 +29,7 @@ class Ayarlar:
     goruntu_klasoru: Path
     nesne_klasoru: Path
     tarama_klasoru: Path
+    panel_sifresi: str = ""  # boşsa giriş istenmez; doluysa panel şifreyle açılır
 
     def kaynak_cozumle(self):
         """OpenCV'ye verilecek kaynak: kamera numarası (int) veya yol/adres."""
@@ -37,6 +38,46 @@ class Ayarlar:
             return int(ham)  # 0 = bilgisayarın kamerası
         aday = self.kok / ham
         return str(aday) if aday.exists() else ham
+
+
+def kaynagi_kaydet(kok: Path, deger: str) -> None:
+    """KAYNAK satırını .env dosyasına yazar; dosya yoksa örnekten oluşturur.
+
+    Kullanıcı kaynağı artık ekrandan seçer — .env'i elle düzenlemesi gerekmez.
+    """
+    env = kok / ".env"
+    ornek = kok / ".env.example"
+    if not env.exists() and ornek.exists():
+        env.write_text(ornek.read_text(encoding="utf-8"), encoding="utf-8")
+    # Boşluk ya da # içeren değer tırnaklanmazsa dotenv yarıda keser
+    yazim = f'"{deger}"' if any(k in deger for k in " #'") and '"' not in deger else deger
+    satirlar = env.read_text(encoding="utf-8").splitlines() if env.exists() else []
+    bulundu = False
+    for i, satir in enumerate(satirlar):
+        if satir.strip().startswith("KAYNAK="):
+            # Yinelenen KAYNAK satırlarının HEPSİ değişmeli; dotenv sonuncuyu okur
+            satirlar[i] = f"KAYNAK={yazim}"
+            bulundu = True
+    if not bulundu:
+        satirlar.append(f"KAYNAK={yazim}")
+    try:
+        env.write_text("\n".join(satirlar) + "\n", encoding="utf-8")
+    except OSError as hata:
+        raise AyarHatasi(f".env dosyasına yazılamadı: {hata.strerror}") from hata
+
+
+def _varsayilan_model(kok: Path) -> str:
+    """MODEL_DOSYASI boşsa eldeki en isabetli model seçilir.
+
+    yolox_s belirgin daha isabetlidir ve modern bir işlemcide hız bütçesine
+    rahat sığar; yoksa yolox_tiny ile devam edilir.
+    """
+    aday = kok / "models/yolox_s.onnx"
+    # Boyut denetimi: yarım kalmış bir indirme (gerçeği ~34 MB) seçilirse
+    # model hiç yüklenemezdi; şüpheli dosya varken tiny ile devam edilir
+    if aday.exists() and aday.stat().st_size > 30_000_000:
+        return "models/yolox_s.onnx"
+    return "models/yolox_tiny.onnx"
 
 
 def yukle(kok: Path | None = None) -> Ayarlar:
@@ -72,10 +113,11 @@ def yukle(kok: Path | None = None) -> Ayarlar:
         kok=kok,
         kaynak=degerler.get("KAYNAK") or "0",
         kare_fps=kare_fps,
-        model_dosyasi=kok / (degerler.get("MODEL_DOSYASI") or "models/yolox_tiny.onnx"),
+        model_dosyasi=kok / (degerler.get("MODEL_DOSYASI") or _varsayilan_model(kok)),
         cihaz=cihaz,
         veritabani=veri / "laffogato.db",
         goruntu_klasoru=goruntuler,
         nesne_klasoru=nesneler,
         tarama_klasoru=taramalar,
+        panel_sifresi=degerler.get("PANEL_SIFRESI") or "",
     )

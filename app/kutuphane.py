@@ -77,6 +77,9 @@ def parmakizi_cikar(bgr: np.ndarray) -> Parmakizi | None:
     histogram = cv2.calcHist([hsv], [0, 1], None, [_TON_GOZ, _DOYGUNLUK_GOZ], [0, 180, 0, 256])
     cv2.normalize(histogram, histogram, 0, 1, cv2.NORM_MINMAX)
     gri = cv2.cvtColor(kucuk, cv2.COLOR_BGR2GRAY)
+    # NOT: ORB öncesi kontrast açma (CLAHE) denendi ve GERİ ALINDI — düz/mat
+    # yüzeylerde sensör gürültüsünden kararsız sahte desen üretip düz nesnenin
+    # kendisiyle eşleşmesini bozuyor (desensiz yol bilinçli olarak korunuyor).
     _, tanimlayicilar = _orb().detectAndCompute(gri, None)
     return Parmakizi(renk=histogram.flatten(), desen=tanimlayicilar)
 
@@ -95,13 +98,24 @@ def _renk_benzerligi(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def _desen_benzerligi(a: np.ndarray | None, b: np.ndarray | None) -> float:
-    """Eşleşen ORB anahtar noktalarının oranı."""
+    """Eşleşen ORB anahtar noktalarının oranı (Lowe oran testiyle elenmiş).
+
+    Oran testi: bir noktanın EN yakın eşi, ikinci en yakınından belirgin
+    iyi değilse eşleşme rastlantısaldır ve sayılmaz — yanlış pozitifleri
+    ciddi azaltır, gerçek eşleşmeleri korur.
+    """
     if a is None or b is None or len(a) < 8 or len(b) < 8:
         return 0.0
-    eslestirici = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    eslesmeler = eslestirici.match(a, b)
-    iyi = [e for e in eslesmeler if e.distance <= _ORB_MESAFE]
-    return len(iyi) / min(len(a), len(b))
+    eslestirici = cv2.BFMatcher(cv2.NORM_HAMMING)
+    iyi = 0
+    for komsu in eslestirici.knnMatch(a, b, k=2):
+        if len(komsu) < 2:
+            continue
+        birinci, ikinci = komsu
+        if birinci.distance <= _ORB_MESAFE and birinci.distance < 0.75 * ikinci.distance:
+            iyi += 1
+    # knnMatch bire-çok eşleşebildiği için oran 1'i aşabilir; skor 0-1 kalmalı
+    return min(iyi / min(len(a), len(b)), 1.0)
 
 
 def benzerlik(aday: Parmakizi, referans: Parmakizi) -> float:
@@ -150,6 +164,9 @@ def en_iyi_eslesme(
     en_iyi_nesne, en_iyi_skor = None, 0.0
     for nesne in nesneler:
         for referans in nesne.parmakizleri:
+            # En iyi eşleşen açı kazanır (top-2 harmanı denendi ve GERİ ALINDI:
+            # yalnız bir açıdan benzeyen gerçek eşleşmeleri eşiğin altına itiyor,
+            # "farklı açı eklemek isabeti artırır" vaadini tersine çeviriyordu)
             skor = benzerlik(aday, referans)
             if skor > en_iyi_skor:
                 en_iyi_nesne, en_iyi_skor = nesne, skor

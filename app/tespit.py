@@ -20,6 +20,11 @@ SINIF_ESLEME: dict[int, str] = {
 }
 
 
+# Kişi (COCO 0) eşiği çarpanı ve gürültü kutusu alt sınırı
+KISI_ESIK_CARPANI = 0.8
+EN_KUCUK_KENAR_PX = 6
+
+
 class ModelHatasi(Exception):
     pass
 
@@ -85,7 +90,10 @@ class Tespitci:
         sinif_idler = skorlar.argmax(1)
         guvenler = skorlar[np.arange(len(skorlar)), sinif_idler]
 
-        maske = (guvenler >= self.guven) & np.isin(sinif_idler, list(SINIF_ESLEME))
+        # Kişiler sahnede küçük/kısmen örtülü görünür; eşiği biraz daha cömert
+        # tutmak kaçan kişileri azaltır (yanlış pozitifler NMS + takip ile elenir)
+        sinif_esikleri = np.where(sinif_idler == 0, self.guven * KISI_ESIK_CARPANI, self.guven)
+        maske = (guvenler >= sinif_esikleri) & np.isin(sinif_idler, list(SINIF_ESLEME))
         bos = (np.empty((0, 4)), np.empty((0,)), np.empty((0,), dtype=object))
         if not maske.any():
             return bos
@@ -98,10 +106,26 @@ class Tespitci:
         kutular[:, 2] = (merkez[:, 0] + merkez[:, 2] / 2).clip(0, kare_g)
         kutular[:, 3] = (merkez[:, 1] + merkez[:, 3] / 2).clip(0, kare_y)
 
+        # Birkaç pikselden küçük kutular gürültüdür; takibe girmeden elensin
+        genislikler = kutular[:, 2] - kutular[:, 0]
+        yukseklikler = kutular[:, 3] - kutular[:, 1]
+        boyut_maskesi = (genislikler >= EN_KUCUK_KENAR_PX) & (yukseklikler >= EN_KUCUK_KENAR_PX)
+        if not boyut_maskesi.any():
+            return bos
+        kutular = kutular[boyut_maskesi]
+        guvenler, sinif_idler = guvenler[boyut_maskesi], sinif_idler[boyut_maskesi]
+
+        # Tip-bilinçli NMS: kutular TİP başına ayrı uzaya kaydırılır. Aynı tipe
+        # eşlenen sınıflar (örn. otomobil+kamyon → arac) birbirini bastırabilsin
+        # ki aynı nesne iki sınıf olarak çift sayılmasın; farklı tipler
+        # (kişi vs diğer) ise birbirini bastırmasın.
+        tip_indeksleri = np.where(sinif_idler == 0, 0.0, 1.0)
+        kaydirma = tip_indeksleri[:, None] * (max(kare_g, kare_y) + 1.0)
+        nms_kutulari = kutular + kaydirma
         secilen = cv2.dnn.NMSBoxes(
-            [(x1, y1, x2 - x1, y2 - y1) for x1, y1, x2, y2 in kutular.tolist()],
+            [(x1, y1, x2 - x1, y2 - y1) for x1, y1, x2, y2 in nms_kutulari.tolist()],
             guvenler.tolist(),
-            self.guven,
+            self.guven * KISI_ESIK_CARPANI,  # sınıf eşiği zaten uygulandı
             0.45,
         )
         if len(secilen) == 0:

@@ -10,7 +10,7 @@ portu (8100).
 ## Çalıştırma
 
 1. **Baslat-Mac.command** (Windows'ta **Baslat-Windows.bat**) dosyasına çift tıkla.
-2. Tarayıcı `http://127.0.0.1:8100` adresinde açılır.
+2. Uygulama **kendi penceresinde** açılır (tarayıcı gerekmez). Pencereyi kapatmak sistemi durdurur. Gerekirse tarayıcıdan da ulaşılabilir: `http://127.0.0.1:8100`
 3. macOS ilk açılışta **kamera izni** sorar — "İzin Ver" de. (Sonradan:
    Sistem Ayarları → Gizlilik ve Güvenlik → Kamera.)
 
@@ -45,7 +45,7 @@ kadar **hangi tarafta durduğunu** sayar. Bardak kaybolunca karar verilir:
 | Sayfa | Ne yapar |
 |---|---|
 | **Kütüphane** | Kendi bardağını/nesneni farklı açılardan fotoğraflayıp tanıtırsın |
-| **Kare tarama** | Kameradan aldığın kareleri yükleyip ne bulduğunu görürsün (sayaçlara dokunmaz) |
+| **Kare tarama** | Fotoğraf ya da video yükleyip ne bulduğunu görürsün — videodan kareler otomatik alınır (sayaçlara dokunmaz) |
 
 ## Dürüst sınırlar
 
