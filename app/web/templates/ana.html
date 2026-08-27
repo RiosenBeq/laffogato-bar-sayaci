@@ -183,6 +183,10 @@
           <li><b>IP / güvenlik kamerası:</b> adres genelde şöyledir:
             rtsp://kullanici:sifre@192.168.1.50:554/stream1 — doğru adresi kameranın
             telefon uygulamasında ya da kullanım kılavuzunda bulabilirsiniz.</li>
+          <li><b>HIK Connect (Hikvision) kamera:</b> bizim kafede kullanılan tür.
+            Aşağıdaki "Hikvision şablonunu doldur" düğmesi doğru adres kalıbını
+            hazırlar; yalnızca kullanıcı adı, şifre ve kameranın YEREL IP'sini
+            yazarsınız.</li>
           <li><b>Video dosyası:</b> kayıtlı bir görüntüyü döngüde oynatır (deneme için ideal).</li></ul>
           Önce "Bağlantıyı Sına" ile görüntü geldiğini doğrulayın, sonra Kaydet.
         </span></span></h3>
@@ -215,12 +219,34 @@
         </div>
         <div class="kaynak-alan" data-tur="rtsp">
           <label>Kamera adresi (RTSP)
-            <input name="rtsp_adres" value=""
+            <input name="rtsp_adres" id="rtsp-adres" value=""
                    placeholder="rtsp://kullanici:sifre@192.168.1.50:554/stream1" autocomplete="off">
           </label>
-          <span class="not">Adresi kameranın telefon uygulamasında ya da kılavuzunda bulabilirsiniz.
-            Güvenlik için kayıtlı adres burada gösterilmez; sınamak ya da değiştirmek
-            için adresi yeniden yazın.</span>
+          <button type="button" class="dugme ikincil kucuk" id="hikvision-sablon"
+                  title="Hikvision kameraların adres kalıbını alana yazar; kullanıcı adı, şifre ve IP'yi siz doldurursunuz">
+            Hikvision şablonunu doldur</button>
+          <div class="not hik-yardim">
+            <b>HIK Connect (Hikvision) kamera bağlama
+              <span class="ipucu" tabindex="0">?<span class="balon"><b>Neden telefondaki gibi "buluttan" bağlanmıyor?</b>
+                HIK Connect uygulaması görüntüyü Hikvision'un bulut sunucusu üzerinden
+                izletir; bu sistem ise kameraya <b>aynı ağdan, doğrudan</b> bağlanır —
+                daha akıcıdır ve internet kesilse de çalışır. Bunun için kameranın
+                YEREL IP adresi gerekir:
+                <ol><li>HIK Connect uygulamasında kameranın <b>ayarlarına</b> girin ve
+                  IP adresini not edin (ya da modem arayüzündeki cihaz listesine bakın).
+                  Genelde 192.168.x.x biçimindedir.</li>
+                <li>Kullanıcı adı çoğu kamerada <b>admin</b>, şifre kameranın
+                  etkinleştirme (aktivasyon) şifresidir — HIK Connect'teki doğrulama
+                  kodu DEĞİL.</li>
+                <li>Adresin sonundaki <b>101</b> = 1. kamera ana akış (en kaliteli),
+                  <b>102</b> = düşük çözünürlüklü akış (eski bilgisayarda daha akıcı).</li>
+                <li>Bağlanamazsanız kameranın web arayüzünde (tarayıcıya IP'sini yazın)
+                  Ayarlar → Ağ → Gelişmiş → RTSP'nin açık olduğunu kontrol edin.</li></ol>
+              </span></span></b>
+          </div>
+          <span class="not">Güvenlik için kayıtlı adres burada gösterilmez; sınamak ya da
+            değiştirmek için adresi yeniden yazın. Yazdığınız şifre yalnızca bu
+            bilgisayardaki .env dosyasında saklanır.</span>
         </div>
         <div class="kaynak-alan" data-tur="dosya">
           <label>Video dosyasının yolu
@@ -365,6 +391,10 @@
     <br><b>Sınırlar (demo):</b> hazır model genel amaçlıdır; kafenin kendi
     bardaklarıyla eğitilirse isabet artar. Üst üste duran ya da elle kapatılan
     bardaklar kaçabilir; tezgâhta uzun süre bekleyen bardak yeniden sayılabilir.
+  </p>
+  <p class="dipnot nextgen-imza">
+    <img src="/static/logo.svg" alt="" class="ng-logo"> <b>NextGen Detector</b>
+    altyapısıyla çalışır — kardeş sistemler: DALSAN-ISG (fabrika), Otopark Takibi.
   </p>
 </main>
 

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NextGen Detector">
+  <!-- NextGen Detector logosu: tespit çerçevesi (viewfinder) içinde N monogramı.
+       Çerçeve = görüntü analizi, N = NextGen. Renk geçişi mavi→turkuaz. -->
+  <defs>
+    <linearGradient id="ng" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0d9488"/>
+    </linearGradient>
+  </defs>
+  <path d="M22 8h-7a7 7 0 0 0-7 7v7" fill="none" stroke="url(#ng)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M42 8h7a7 7 0 0 1 7 7v7" fill="none" stroke="url(#ng)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M22 56h-7a7 7 0 0 1-7-7v-7" fill="none" stroke="url(#ng)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M42 56h7a7 7 0 0 0 7-7v-7" fill="none" stroke="url(#ng)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M23 43V21l18 22V21" fill="none" stroke="url(#ng)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -77,3 +77,18 @@ document.querySelectorAll(".kaydirici").forEach(function (alan) {
   surgu.addEventListener("input", yaz);
   yaz();
 });
+
+// Hikvision (HIK Connect) şablon düğmesi: doğru RTSP kalıbını alana yazar.
+// Kullanıcı yalnızca KULLANICI, SIFRE ve KAMERA-IP kısımlarını değiştirir.
+(function () {
+  var dugme = document.getElementById("hikvision-sablon");
+  var alan = document.getElementById("rtsp-adres");
+  if (!dugme || !alan) return;
+  dugme.addEventListener("click", function () {
+    alan.value = "rtsp://admin:SIFRE@192.168.1.64:554/Streaming/Channels/101";
+    alan.focus();
+    // Kullanıcı ilk düzeltmesi gereken yere odaklansın: şifre bölümü
+    var bas = alan.value.indexOf("SIFRE");
+    alan.setSelectionRange(bas, bas + 5);
+  });
+})();

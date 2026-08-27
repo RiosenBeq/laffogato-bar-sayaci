@@ -1,5 +1,7 @@
 # Laffogato — kafe bar sayacı
 
+<sub>**NextGen Detector** ailesinden — kardeş projeler: DALSAN-ISG (fabrika), Otopark Takibi.</sub>
+
 Bar alanına bakan kameradan **günde kaç bardak yapıldığını**, bunların
 **ne kadarını müşterinin içtiğini** ve **baristanın kendine kaç tane
 yaptığını** çıkaran deneme uygulaması. Canlı kamera görüntüsü ekranda izlenir.
@@ -22,6 +24,26 @@ KAYNAK=1                    # USB ile takılı ikinci kamera
 KAYNAK=rtsp://...           # kafedeki IP/güvenlik kamerası
 KAYNAK=veri/kayit.mp4       # kayıtlı video
 ```
+
+### HIK Connect (Hikvision) kamera — kafede kullandığımız
+
+HIK Connect uygulaması görüntüyü buluttan izletir; bu sistem ise kameraya
+**aynı ağdan, doğrudan RTSP ile** bağlanır (daha akıcıdır, internet kesilse
+de çalışır). Sayaç sayfasındaki "Görüntü kaynağı" bölümünde **Hikvision
+şablonunu doldur** düğmesi doğru kalıbı hazırlar:
+
+```
+rtsp://admin:SIFRE@192.168.1.64:554/Streaming/Channels/101
+```
+
+- **IP adresi:** HIK Connect'te kameranın ayarlarında ya da modemin cihaz
+  listesinde yazar (192.168.x.x biçiminde).
+- **Şifre:** kameranın etkinleştirme (aktivasyon) şifresi — HIK Connect'teki
+  doğrulama kodu DEĞİL. Kullanıcı adı çoğu kamerada `admin`.
+- **101 / 102:** 101 = ana akış (en kaliteli), 102 = düşük çözünürlüklü akış
+  (eski bilgisayarda daha akıcı).
+- Bağlanamazsanız kameranın web arayüzünde RTSP'nin açık olduğunu kontrol
+  edin (Ayarlar → Ağ → Gelişmiş).
 
 ## Kurulum sırası (bir kez)
 
@@ -93,3 +115,15 @@ veriler kaybolmaz. Ayrıntılı kılavuz: fabrika projesindeki `NASIL-CALISIR.md
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check .
 ```
+
+## Yönetici şifresi
+
+Panel varsayılan olarak **şifresizdir** (kafe bilgisayarında yerel kullanım).
+Şifre koymak için `.env` dosyasında şu satırı doldurup uygulamayı yeniden başlatın:
+
+```
+PANEL_SIFRESI=buraya-sifrenizi-yazin
+```
+
+Şifreyi unutursanız `.env` dosyasından silmeniz yeterli. `.env` GitHub'a
+gönderilmez — kamera şifreniz ve panel şifreniz yalnızca kafedeki bilgisayarda durur.
