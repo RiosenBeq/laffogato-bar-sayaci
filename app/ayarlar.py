@@ -29,6 +29,8 @@ class Ayarlar:
     goruntu_klasoru: Path
     nesne_klasoru: Path
     tarama_klasoru: Path
+    egitim_klasoru: Path
+    bardak_model_klasoru: Path
     panel_sifresi: str = ""  # boşsa giriş istenmez; doluysa panel şifreyle açılır
 
     def kaynak_cozumle(self):
@@ -89,7 +91,9 @@ def yukle(kok: Path | None = None) -> Ayarlar:
     goruntuler = veri / "goruntuler"
     nesneler = veri / "nesneler"
     taramalar = veri / "taramalar"
-    for klasor in (veri, goruntuler, nesneler, taramalar):
+    # Bardak Eğitimi: yüklenen görüntülerden çıkarılan aday kırpıklar
+    egitim = veri / "egitim"
+    for klasor in (veri, goruntuler, nesneler, taramalar, egitim):
         try:
             klasor.mkdir(parents=True, exist_ok=True)
         except OSError as hata:
@@ -119,5 +123,8 @@ def yukle(kok: Path | None = None) -> Ayarlar:
         goruntu_klasoru=goruntuler,
         nesne_klasoru=nesneler,
         tarama_klasoru=taramalar,
+        egitim_klasoru=egitim,
+        # Eğitilen bardak doğrulayıcının sürümlü model klasörü
+        bardak_model_klasoru=kok / "models" / "bardak",
         panel_sifresi=degerler.get("PANEL_SIFRESI") or "",
     )

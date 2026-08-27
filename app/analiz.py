@@ -22,12 +22,36 @@ import supervision as sv  # noqa: E402
 
 from app import veritabani, zaman  # noqa: E402
 from app.ayarlar import Ayarlar  # noqa: E402
-from app.bardak import BARISTA, MUSTERI, BardakDurumu, bolge_bul  # noqa: E402
+from app.bardak import (  # noqa: E402
+    BARISTA,
+    MUSTERI,
+    BardakDurumu,
+    TekrarKorumasi,
+    bolge_bul,
+)
+from app.bardak_modeli import BardakModeli, bardak_kirp  # noqa: E402
 from app.tespit import ModelHatasi, Tespitci  # noqa: E402
 
 # Bardak bu kadar ardışık değerlendirmede görünmezse "gitti" sayılır ve
 # kararı kesinleşir (kısa örtülmeler kararı bölmesin diye sabırlı davranırız).
 _KAYIP_ESIGI = 12
+
+# Takipçinin kayıp bir izi hatırlama süresi, SANİYE cinsinden.
+#
+# DİKKAT — çift sayımın kök nedeni buradaydı: supervision, lost_track_buffer'ı
+# doğrudan kare olarak saymaz, şunu yapar:
+#     max_time_lost = int(frame_rate / 30 * lost_track_buffer)
+# Yani 4 fps'te lost_track_buffer=60 vermek 60 kare (15 sn) DEĞİL, yalnızca
+# int(4/30*60)=8 kare = 2 SANİYE hafıza demekti. Barista bardağın önünden
+# 2 saniyeden uzun geçince iz düşüyor, bardak yeniden göründüğünde YENİ takip
+# numarası alıyor ve ikinci kez sayılıyordu.
+# Doğrusu: buffer = 30 * istenen_saniye  →  max_time_lost = fps * istenen_saniye.
+_IZ_HAFIZASI_SN = 15.0
+
+# Renk imzası: tekrar korumasının "aynı görünüm mü" kanıtı (bkz. bardak.py).
+# ORB deseni bu projenin kırpıklarında ölçüldü ve tutunacak iz vermiyor
+# (medyan 1 anahtar nokta); renk histogramı çalışıyor.
+_IMZA_TON_GOZ, _IMZA_DOYGUNLUK_GOZ = 12, 4
 
 _RENKLER = {"bardak": (60, 190, 255), "kisi": (150, 150, 150)}
 _BOLGE_RENKLERI = {MUSTERI: (90, 200, 90), BARISTA: (200, 140, 60)}
@@ -54,6 +78,16 @@ class Analiz:
         self._acik: dict[int, BardakDurumu] = {}
         self._kayip: dict[int, int] = {}
         self._bolgeler: dict[str, list[tuple[float, float]]] = {}
+        self._tekrar = TekrarKorumasi()
+        # Takip numaraları izleyici her kurulduğunda 1'den başlar. Kayıt
+        # tablosunda UNIQUE (gun, takip_id) olduğu için, gün içinde ikinci kez
+        # kullanılan bir numara INSERT OR IGNORE ile SESSİZCE düşerdi — yani
+        # bardak sayılmazdı. Bu ofset, o günkü en büyük numaranın üstünden
+        # devam ederek çakışmayı engeller.
+        self._id_ofseti = 0
+        # Eğitilmiş bardak doğrulayıcı. Yoksa sayım bugünkü gibi çalışır.
+        self._model = BardakModeli(ayarlar.bardak_model_klasoru)
+        self.dogrulayici_eledi = 0
 
     # ---- yaşam döngüsü ----
 
@@ -78,11 +112,25 @@ class Analiz:
     def sayaclari_sifirla(self) -> None:
         self._acik.clear()
         self._kayip.clear()
+        self._tekrar = TekrarKorumasi()
+
+    @property
+    def tekrar_bastirilan(self) -> int:
+        """Kaç bardak 'az önce sayılanın devamı' diye tekrar sayılmadı."""
+        return self._tekrar.bastirilan
 
     # ---- ana döngü ----
 
+    def _id_ofsetini_tazele(self, baglanti) -> None:
+        satir = baglanti.execute(
+            "SELECT COALESCE(MAX(takip_id), 0) AS son FROM bardaklar WHERE gun = ?",
+            (zaman.bugun(),),
+        ).fetchone()
+        self._id_ofseti = int(satir["son"])
+
     def _dongu(self) -> None:
         baglanti = veritabani.baglanti_ac(self.ayarlar.veritabani)
+        self._id_ofsetini_tazele(baglanti)
         try:
             self._tespitci = Tespitci(self.ayarlar.model_dosyasi, self.ayarlar.cihaz)
         except ModelHatasi as hata:
@@ -169,7 +217,14 @@ class Analiz:
             return
         self._hassasiyeti_uygula(baglanti)
 
+        # Devreye alınan yeni model yeniden başlatmadan yüklensin
+        self._model.gerekirse_yenile()
+        # Seramik fincanın COCO'da saklandığı bowl/vase sınıfları YALNIZCA
+        # doğrulayıcı devredeyken aday olur; onları eleyecek bir şey var demektir.
+        self._tespitci.genis_aday = self._model.model_var
+
         kutular, guvenler, tipler = self._tespitci.bul(kare)
+        kutular, guvenler, tipler = self._adaylari_dogrula(kare, kutular, guvenler, tipler)
         izler = self._takip_et(kutular, guvenler, tipler)
         bardaklar = [i for i in izler if i["tip"] == "bardak"]
         self.canli_bardak = len(bardaklar)
@@ -177,6 +232,43 @@ class Analiz:
 
         self._bardaklari_izle(bardaklar, kare, baglanti)
         self._onizleme_yaz(kare, izler)
+
+    def _adaylari_dogrula(self, kare, kutular, guvenler, tipler):
+        """Eğitilmiş doğrulayıcı devredeyse "bardak değil" denen kutuları eler.
+
+        Model yoksa hiçbir şey değişmez. "Belirsiz" çıkan kutu da ELENMEZ —
+        emin olmadan bardağı sayımdan düşürmeyiz (kanıtın yokluğu, yokluğun
+        kanıtı değildir).
+        """
+        if not self._model.model_var or len(kutular) == 0:
+            return kutular, guvenler, tipler
+        tutulacak: list[int] = []
+        yeni_tipler = list(tipler)
+        for i, tip in enumerate(tipler):
+            if tip not in ("bardak", "aday"):
+                tutulacak.append(i)  # kişi kutularına dokunulmaz
+                continue
+            kirpik = bardak_kirp(kare, tuple(float(v) for v in kutular[i]))
+            karar, _ = self._model.karar(kirpik)
+            if tip == "aday":
+                # Hazır modelin "kâse/vazo" dediği kutu: ancak doğrulayıcı
+                # AÇIKÇA "bardak" derse sayıma girer. Belirsiz olan elenir —
+                # bugün zaten sayılmıyordu, riski artırmayız.
+                if karar == "bardak":
+                    yeni_tipler[i] = "bardak"
+                    tutulacak.append(i)
+                continue
+            # Hazır modelin bardak dediği kutu: yalnızca AÇIKÇA "değil" ise
+            # elenir. Belirsiz olan ELENMEZ (kanıtın yokluğu, yokluğun kanıtı değil).
+            if karar == "degil":
+                self.dogrulayici_eledi += 1
+                continue
+            tutulacak.append(i)
+        secim = np.array(tutulacak, dtype=int)
+        tip_dizisi = np.array(yeni_tipler, dtype=object)
+        if len(tutulacak) == len(tipler):
+            return kutular, guvenler, tip_dizisi
+        return kutular[secim], guvenler[secim], tip_dizisi[secim]
 
     def _izleyici_kur(self, hassasiyet: float) -> sv.ByteTrack:
         """ByteTrack'i tespit hassasiyetine göre kurar.
@@ -187,11 +279,13 @@ class Analiz:
         sayaç sıfırda kalır. Bu yüzden aktivasyon, hassasiyetin belirgin
         şekilde altında tutulur.
         """
+        kare_hizi = max(int(self.ayarlar.kare_fps), 1)
         return sv.ByteTrack(
             track_activation_threshold=max(0.10, hassasiyet * 0.6),
-            # Bardak elle kapatılıp tekrar görünebilir; izi çabuk düşürme
-            lost_track_buffer=60,
-            frame_rate=max(int(self.ayarlar.kare_fps), 1),
+            # Bardak elle kapatılıp tekrar görünebilir; izi çabuk düşürme.
+            # 30 ile çarpım ZORUNLU — gerekçesi _IZ_HAFIZASI_SN'de yazılı.
+            lost_track_buffer=int(_IZ_HAFIZASI_SN * 30),
+            frame_rate=kare_hizi,
         )
 
     def _hassasiyeti_uygula(self, baglanti) -> None:
@@ -209,9 +303,11 @@ class Analiz:
         if abs(deger - self._hassasiyet) < 1e-9:
             return
         self._hassasiyet = deger
-        # Takipçi eşiği hassasiyete bağlı: yeniden kurulur (takip numaraları
-        # sıfırlanır, o an ekranda olan bardaklar yeniden sayılabilir)
+        # Takipçi eşiği hassasiyete bağlı: yeniden kurulur. Numaralar 1'den
+        # başlayacağı için ofset tazelenir; yoksa o günkü ilk bardaklarla
+        # çakışıp yeni bardaklar sessizce sayılmazdı.
         self._izleyici = self._izleyici_kur(deger)
+        self._id_ofsetini_tazele(baglanti)
 
     def _takip_et(self, kutular, guvenler, tipler) -> list[dict]:
         if len(kutular) == 0:
@@ -241,6 +337,7 @@ class Analiz:
 
     def _bardaklari_izle(self, bardaklar: list[dict], kare, baglanti) -> None:
         simdi = zaman.simdi_utc()
+        saat = time.monotonic()
         genislik, yukseklik = self._kare_boyutu
         gorulenler = set()
 
@@ -249,13 +346,23 @@ class Analiz:
             gorulenler.add(takip_id)
             x1, y1, x2, y2 = bardak["kutu"]
             merkez = ((x1 + x2) / 2 / genislik, (y1 + y2) / 2 / yukseklik)
+            boyut = (abs(x2 - x1) / genislik, abs(y2 - y1) / yukseklik)
             bolge = bolge_bul(merkez, self._bolgeler)
 
             durum = self._acik.get(takip_id)
             if durum is None:
                 durum = BardakDurumu(takip_id=takip_id, ilk_zaman=simdi, son_zaman=simdi)
                 durum.foto = self._kirpik_kaydet(kare, bardak["kutu"])
+                durum.renk_imzasi = self._renk_imzasi(kare, bardak["kutu"])
+                # Az önce kapanmış bir bardağın devamı mı? Öyleyse bu iz
+                # sayılmaz — tezgâhta bekleyen bardağın ikinci kez sayılmasını
+                # önleyen ikinci savunma (birincisi: _IZ_HAFIZASI_SN).
+                durum.tekrar_mi = self._tekrar.ayni_bardak_mi(
+                    merkez, boyut, durum.renk_imzasi, saat
+                )
                 self._acik[takip_id] = durum
+            durum.son_merkez = merkez
+            durum.son_boyut = boyut
             durum.gozlem_ekle(bolge, simdi)
             self._kayip.pop(takip_id, None)
 
@@ -268,7 +375,16 @@ class Analiz:
                 continue
             durum = self._acik.pop(takip_id)
             self._kayip.pop(takip_id, None)
+            # YALNIZCA gerçekten sayılan bardaklar hatırlanır. Birkaç karelik
+            # yanlış tespit (şekerlik, kaşık) hatırlanırsa, az sonra tam o
+            # noktada hazırlanan GERÇEK bardağı "devam" sanıp yutardı.
             if durum.sayilir_mi():
+                # YALNIZCA sayılan bardaklar hatırlanır. Bastırılmış izleri de
+                # hatırlamak, tezgâhın o noktasını kalıcı bir "yutma alanı"na
+                # çevirir ve sonraki gerçek bardakların hepsi kaybolurdu.
+                self._tekrar.hatirla(
+                    durum.son_merkez, durum.son_boyut, durum.renk_imzasi, saat
+                )
                 self._bardagi_kaydet(baglanti, durum)
 
     def _bardagi_kaydet(self, baglanti, durum: BardakDurumu) -> None:
@@ -278,7 +394,7 @@ class Analiz:
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 zaman.bugun(),
-                durum.takip_id,
+                self._id_ofseti + durum.takip_id,
                 durum.ilk_zaman,
                 durum.son_zaman,
                 durum.karar(),
@@ -288,6 +404,26 @@ class Analiz:
             ),
         )
         baglanti.commit()
+
+    def _renk_imzasi(self, kare: np.ndarray, kutu) -> tuple[float, ...] | None:
+        """Kutunun renk parmak izi (HSV histogramı), sade sayı dizisi olarak.
+
+        bardak.py OpenCV bilmesin diye çıkarım burada yapılır; oradaki
+        tekrar koruması yalnız sayıları karşılaştırır.
+        """
+        x1, y1, x2, y2 = (int(v) for v in kutu)
+        x1, y1 = max(x1, 0), max(y1, 0)
+        x2, y2 = min(x2, kare.shape[1]), min(y2, kare.shape[0])
+        if x2 - x1 < 8 or y2 - y1 < 8:
+            return None
+        hsv = cv2.cvtColor(kare[y1:y2, x1:x2], cv2.COLOR_BGR2HSV)
+        histogram = cv2.calcHist(
+            [hsv], [0, 1], None, [_IMZA_TON_GOZ, _IMZA_DOYGUNLUK_GOZ], [0, 180, 0, 256]
+        )
+        toplam = float(histogram.sum())
+        if toplam <= 0:
+            return None
+        return tuple((histogram / toplam).flatten().tolist())
 
     def _kirpik_kaydet(self, kare: np.ndarray, kutu) -> str | None:
         x1, y1, x2, y2 = (int(v) for v in kutu)
@@ -330,7 +466,7 @@ class Analiz:
 
         for iz in izler:
             x1, y1, x2, y2 = (int(v) for v in iz["kutu"])
-            renk = _RENKLER[iz["tip"]]
+            renk = _RENKLER.get(iz["tip"], (180, 180, 180))
             kalinlik = 2 if iz["tip"] == "bardak" else 1
             cv2.rectangle(gorsel, (x1, y1), (x2, y2), renk, kalinlik)
             if iz["tip"] == "bardak":

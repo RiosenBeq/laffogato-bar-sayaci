@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import veritabani
 from app.ayarlar import Ayarlar
-from app.web import giris, nesne_rotalari, rotalar
+from app.web import egitim_rotalari, giris, nesne_rotalari, rotalar
 
 STATIK = Path(__file__).resolve().parent / "web" / "static"
 
@@ -53,6 +53,7 @@ def uygulama_olustur(ayarlar: Ayarlar, analiz_ac: bool = True) -> FastAPI:
     uygulama.include_router(giris.router)
     uygulama.include_router(rotalar.router)
     uygulama.include_router(nesne_rotalari.router)
+    uygulama.include_router(egitim_rotalari.router)
     uygulama.middleware("http")(giris.giris_bekcisi)
     uygulama.mount("/static", StaticFiles(directory=str(STATIK)), name="static")
     return uygulama

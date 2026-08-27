@@ -15,7 +15,8 @@ def ayarlar(tmp_path: Path):
     goruntuler = veri / "goruntuler"
     nesneler = veri / "nesneler"
     taramalar = veri / "taramalar"
-    for klasor in (goruntuler, nesneler, taramalar):
+    egitim = veri / "egitim"
+    for klasor in (goruntuler, nesneler, taramalar, egitim):
         klasor.mkdir(parents=True)
     return Ayarlar(
         kok=tmp_path,
@@ -27,6 +28,8 @@ def ayarlar(tmp_path: Path):
         goruntu_klasoru=goruntuler,
         nesne_klasoru=nesneler,
         tarama_klasoru=taramalar,
+        egitim_klasoru=egitim,
+        bardak_model_klasoru=tmp_path / "models" / "bardak",
     )
 
 

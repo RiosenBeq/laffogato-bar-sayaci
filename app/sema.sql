@@ -38,3 +38,25 @@ CREATE TABLE IF NOT EXISTS nesne_fotolari (
 );
 
 CREATE INDEX IF NOT EXISTS idx_foto_nesne ON nesne_fotolari (nesne_id);
+
+-- Bardak doğrulayıcının eğitim örnekleri (Bardak Eğitimi sayfası).
+-- Kullanıcı fotoğraf/video yükler; dedektörün bulduğu HER aday kutu buraya
+-- etiketsiz düşer ve üç düğmeyle etiketlenir.
+CREATE TABLE IF NOT EXISTS bardak_ornekleri (
+    id          INTEGER PRIMARY KEY,
+    dosya       TEXT NOT NULL,               -- veri/egitim altına göreli kırpık
+    -- Sızıntısız bölme için: aynı yüklemeden gelen kırpıklar aynı partidedir
+    -- ve eğitim/test arasında BÖLÜNMEZ (aynı bardağın iki karesi iki tarafa
+    -- düşerse skor yalan çıkar).
+    parti       TEXT NOT NULL,
+    kaynak      TEXT NOT NULL CHECK (kaynak IN ('yukleme', 'kamera')),
+    kutu        TEXT NOT NULL,               -- JSON normalize [x1,y1,x2,y2]
+    -- Bugünkü sayım bu kutuyu bardak sayar mıydı? (COCO 39/40/41)
+    coco_bardak INTEGER NOT NULL DEFAULT 0,
+    etiket      TEXT CHECK (etiket IN ('bardak', 'degil', 'belirsiz')),
+    eklendi     TEXT NOT NULL,               -- ISO-8601 UTC
+    etiketlendi TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_ornek_etiket ON bardak_ornekleri (etiket);
+CREATE INDEX IF NOT EXISTS idx_ornek_parti ON bardak_ornekleri (parti);

@@ -32,6 +32,9 @@ EN_COK_KARE = 12
 VIDEO_KARE_SAYISI = 8
 VIDEO_UZANTILAR = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 EN_BUYUK_VIDEO = 200 * 1024 * 1024  # 200 MB — telefon videosu rahat sığar
+# Fotoğraf tarafı da sınırlı olmalı: desteklenmeyen uzantılı büyük dosyalar
+# 'görsel' sayılıp belleğe okunuyordu (bkz. _yukleri_topla)
+EN_BUYUK_GORSEL = 25 * 1024 * 1024
 
 
 @router.get("/kutuphane", response_class=HTMLResponse)
@@ -225,7 +228,17 @@ async def _yukleri_topla(dosyalar: list[UploadFile]) -> list[tuple[str, str, Pat
             else:
                 ogeler.append((dosya.filename, "video", gecici))
         else:
-            ogeler.append((dosya.filename, "gorsel", await dosya.read()))
+            # Video listesinde OLMAYAN uzantılar (.m4v, .mpg, .mts …) buraya
+            # düşer. Sınırsız okumak, kafedeki küçük bilgisayarda 1,5 GB'lık
+            # bir dosyayı tek seferde RAM'e alıp sistemi kilitlerdi.
+            veri = bytearray()
+            asildi = False
+            while parca := await dosya.read(1024 * 1024):
+                veri.extend(parca)
+                if len(veri) > EN_BUYUK_GORSEL:
+                    asildi = True
+                    break
+            ogeler.append((dosya.filename, "gorsel", None if asildi else bytes(veri)))
     return ogeler
 
 
@@ -266,7 +279,11 @@ def _tarama_isle(ogeler, tespitci, nesneler, klasor: Path, esik: float):
                 )
                 continue
 
-            gorsel = cv2.imdecode(np.frombuffer(veri, np.uint8), cv2.IMREAD_COLOR)
+            gorsel = (
+                cv2.imdecode(np.frombuffer(veri, np.uint8), cv2.IMREAD_COLOR)
+                if veri is not None
+                else None
+            )
             if gorsel is None:
                 sonuclar.append(
                     tarama_modulu.TaramaSonucu(

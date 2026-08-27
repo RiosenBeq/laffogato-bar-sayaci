@@ -30,6 +30,9 @@ KAYNAK=veri/kayit.mp4       # kayıtlı video
    (tezgâhın arkası ve önü).
 3. Gerekirse **tespit hassasiyetini** ayarla (bardak küçük bir nesnedir;
    0,30 iyi bir başlangıç, düşürürsen daha çok yakalar ama yanlış tespit artar).
+4. İstersen **Bardak eğitimi** sayfasından kendi bardaklarını tanıt: farklı
+   açılardan görüntü yükle, çıkan kırpıkları etiketle, eğitimi çalıştır.
+   Ölçüm dürüst olsun diye **en az iki ayrı yükleme** gerekir.
 
 ## Nasıl sayıyor
 
@@ -44,6 +47,7 @@ kadar **hangi tarafta durduğunu** sayar. Bardak kaybolunca karar verilir:
 
 | Sayfa | Ne yapar |
 |---|---|
+| **Bardak eğitimi** | Kendi bardaklarının görüntülerini yükler, kırpıkları etiketler ve tanımayı eğitirsin |
 | **Kütüphane** | Kendi bardağını/nesneni farklı açılardan fotoğraflayıp tanıtırsın |
 | **Kare tarama** | Fotoğraf ya da video yükleyip ne bulduğunu görürsün — videodan kareler otomatik alınır (sayaçlara dokunmaz) |
 
@@ -52,9 +56,15 @@ kadar **hangi tarafta durduğunu** sayar. Bardak kaybolunca karar verilir:
 - Hazır model genel amaçlıdır; kafenin kendi bardaklarıyla ince ayar yapılırsa
   isabet belirgin artar.
 - Üst üste duran, elle kapatılan veya çok küçük görünen bardaklar kaçabilir.
-- Tezgâhta uzun süre bekleyip yeniden görünen bardak ikinci kez sayılabilir.
-- Nesne tanıtma bir **model eğitimi değildir**: renk + desen parmak izi
-  karşılaştırmasıdır. Düz beyaz fincanlarda yalnız renge dayanır.
+- Tezgâhta bekleyip yeniden görünen bardağa karşı iki katmanlı koruma vardır
+  (takipçi hafızası + aynı yer/boy/renk kontrolü); yine de arka arkaya aynı
+  yere konan **birbirine çok benzeyen iki bardak** tek sayılabilir.
+- **Kütüphane** sayfasındaki nesne tanıtma bir model eğitimi değildir: renk +
+  desen parmak izi karşılaştırmasıdır. Düz beyaz fincanlarda yalnız renge dayanır.
+- **Bardak eğitimi** sayfası gerçek bir eğitim yapar ama hazır tespit modelini
+  yeniden eğitmez: onun bulduğu aday kutulara "bu bizim bardağımız mı?" diye
+  soran küçük bir doğrulayıcı eğitir. Yeterli ve çeşitli veri yoksa eğitim
+  çalışmaz — sistem karşılığı olmayan bir isabet sayısı göstermez.
 
 ## Platform ve Docker
 

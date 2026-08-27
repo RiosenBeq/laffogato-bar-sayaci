@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bardak Eğitimi — Laffogato</title>
+  <link rel="stylesheet" href="/static/stil.css?v=9">
+</head>
+<body>
+<header>
+  <div class="cubuk">
+    <h1>☕ Laffogato <span class="ince">bardak eğitimi</span></h1>
+    <nav class="ust-nav">
+      <a href="/">Sayaç</a>
+      <a href="/egitim" class="aktif">Bardak eğitimi</a>
+      <a href="/kutuphane">Kütüphane</a>
+      <a href="/tarama">Kare tarama</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  {% if hata %}<div class="uyari">{{ hata }}</div>{% endif %}
+  {% if mesaj %}<div class="basari">{{ mesaj }}</div>{% endif %}
+
+  <section class="kart">
+    <h2>Durum</h2>
+    <table>
+      <tr><th>Toplanan kırpık</th>
+        <td>{{ sayilar.toplam }} <span class="not">(kırpık = yüklediğiniz
+          görüntüde sistemin bardak olabilir diye kestiği küçük parça)</span></td></tr>
+      <tr><th>"Bizim bardağımız"</th>
+        <td>{{ sayilar.bardak }} <span class="not">(eğitim için en az {{ en_az_bardak }})</span></td></tr>
+      <tr><th>"Bardak değil"</th>
+        <td>{{ sayilar.degil }} <span class="not">(eğitim için en az {{ en_az_degil }})</span></td></tr>
+      <tr><th>"Belirsiz"</th>
+        <td>{{ sayilar.belirsiz }} <span class="not">(eğitime girmez, doğru olan budur)</span></td></tr>
+      <tr><th>Ayrı yükleme</th>
+        <td>{{ sayilar.parti }} <span class="not">(etiketlenmiş kırpığı olan
+          yükleme sayısı; ölçüm için en az {{ en_az_parti }})</span></td></tr>
+      <tr><th>Devredeki model</th><td>
+        {% if aktif_model %}
+          <b>{{ aktif_model.surum }}</b> — isabet %{{ "%.0f"|format(aktif_model.yeni_isabet * 100) }},
+          belirsiz {{ aktif_model.yeni_belirsiz }}
+          <span class="not">({{ aktif_model.test_sayisi }} test kırpığında ölçüldü)</span>
+        {% else %}
+          Yok — bardak tanıma bugünkü gibi hazır modelin sınıflarına dayanıyor
+        {% endif %}
+      </td></tr>
+    </table>
+    {% if bolge_uyarisi %}<p class="uyari">{{ bolge_uyarisi }}</p>{% endif %}
+    {% if aktif_model %}
+    <form method="post" action="/egitim/devreden-cikar" class="satir-form"
+          onsubmit="return confirm('Model devreden çıkarılsın mı? Sistem eski davranışına döner.')">
+      <button class="dugme sade kucuk">Modeli devreden çıkar</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="kart">
+    <h2>1. Bardaklarının görüntülerini ekle
+      <span class="ipucu" tabindex="0">?<span class="balon balon-sag"><b>Nasıl iyi sonuç alınır?</b>
+        <ol><li>Bardağı <b>farklı açılardan</b> çekin: önden, yandan, üstten.</li>
+        <li><b>Kameranın gördüğü gibi</b> çekin — mümkünse bar kamerasının açısından
+          ve mesafesinden. Stüdyo fotoğrafı ile tavan kamerası görüntüsü birbirine
+          benzemez; sistem sahada göreceği şeyi öğrenmeli.</li>
+        <li>Farklı ışıklarda (gündüz/akşam) ekleyin.</li>
+        <li><b>En az iki ayrı gün/oturumda</b> yükleyin: ölçümün dürüst olması için
+          eğitim ve sınav görüntülerinin farklı yüklemelerden gelmesi gerekir.</li>
+        <li>Bar tezgâhının bardaksız hâlini de yükleyin — "bardak değil" örnekleri
+          en az bardaklar kadar önemlidir.</li></ol>
+      </span></span></h2>
+    <p class="not">Fotoğraf ya da kısa video yükleyin. Sistem her görüntüde bardak
+      olabilecek kutuları bulup kırpar; siz aşağıda etiketlersiniz.</p>
+    <form method="post" action="/egitim/yukle" enctype="multipart/form-data" class="dikey-form">
+      <div class="yukleme" data-en-cok="20" data-zorunlu="1" data-video="1">
+        <div class="birak-alani">
+          <input type="file" name="gorseller"
+                 accept="image/jpeg,image/png,image/webp,image/bmp,video/mp4,video/quicktime,video/x-msvideo,video/webm" multiple>
+          <div class="birak-ikon">🥤</div>
+          <div class="birak-baslik"><u>Fotoğraf / video seç</u> ya da buraya sürükle</div>
+          <span class="birak-detay">JPG, PNG, WEBP ya da video · en fazla 20 dosya</span>
+        </div>
+        <div class="secilenler" hidden></div>
+        <p class="yukleme-mesaj" hidden></p>
+      </div>
+      <button class="dugme">Görüntüleri Yükle ve Tara</button>
+    </form>
+  </section>
+
+  <section class="kart">
+    <h2>2. Kırpıkları etiketle
+      {% if kalan %}<span class="rozet gri">{{ kalan }} sırada</span>{% endif %}</h2>
+    {% if ornekler %}
+    <p class="not">Her kırpık için: bu <b>bizim bardağımız</b> mı, <b>bardak değil</b> mi?
+      Emin değilseniz <b>Belirsiz</b> deyin — belirsiz olanlar eğitime girmez ve
+      bu doğru olandır. Emin olmadan verilen etiket modeli bozar.</p>
+    <div class="foto-izgara">
+      {% for o in ornekler %}
+      <div class="foto-kart" id="ornek-{{ o.id }}">
+        <img src="/egitim-foto/{{ o.dosya }}" alt="aday kırpık" loading="lazy">
+        <div class="etiket-grubu" data-ornek="{{ o.id }}">
+          <button data-etiket="bardak">Bizim bardağımız</button>
+          <button data-etiket="degil">Bardak değil</button>
+          <button data-etiket="belirsiz">Belirsiz</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if kalan %}
+    <p class="not">Ekranda bir seferde en çok {{ ornekler|length }} kart gösterilir.
+      Bunları bitirince <b>sayfayı yenileyin</b>, sıradaki {{ kalan }} kırpık gelecek.</p>
+    {% endif %}
+    {% else %}
+    <p class="bos">Etiketlenecek kırpık yok. Yukarıdan görüntü yükleyin.</p>
+    {% endif %}
+  </section>
+
+  <section class="kart">
+    <h2>3. Eğitimi çalıştır</h2>
+    <p class="not">Eğitim birkaç saniye sürer. Eski yöntem ve yeni model
+      <b>aynı kırpıklarda</b> karşılaştırılır; yeni model yalnızca
+      <b>belirsiz sayısını düşürüyor ve isabeti geriletmiyorsa</b> devreye alınır.
+      Yeterli veri yoksa sistem eğitimi çalıştırmaz ve nedenini söyler.</p>
+    <form method="post" action="/egitim/calistir">
+      <button class="dugme">Eğitimi Çalıştır</button>
+    </form>
+  </section>
+
+  <p class="dipnot">
+    <b>Ne yapıldığı, ne yapılmadığı:</b> hazır tespit modelinin kendisi yeniden
+    eğitilmez. Onun bulduğu her aday kutuya, sizin etiketlediğiniz görüntülerle
+    eğitilmiş küçük bir doğrulayıcı "bu bizim bardağımız mı?" diye sorulur.
+    Doğrulayıcı devredeyken, hazır modelin "kâse" ya da "vazo" sandığı seramik
+    fincanlar da aday olarak değerlendirilir. Model yokken sistem bugünkü
+    davranışını birebir korur.
+  </p>
+</main>
+<script src="/static/yukleme.js?v=9"></script>
+<script>
+document.querySelectorAll(".etiket-grubu button").forEach(function (dugme) {
+  dugme.addEventListener("click", function () {
+    var grup = dugme.parentElement;
+    fetch("/egitim/" + grup.dataset.ornek + "/etiket?etiket=" + dugme.dataset.etiket,
+          { method: "POST" })
+      .catch(function () {
+        alert("Sunucuya ulaşılamadı. Uygulama penceresi kapanmış olabilir; " +
+              "yeniden başlatıp sayfayı yenileyin.");
+      })
+      .then(function (yanit) {
+        if (!yanit) { return; }
+        if (!yanit.ok) { alert("Etiket kaydedilemedi. Sayfayı yenileyin."); return; }
+        var kart = document.getElementById("ornek-" + grup.dataset.ornek);
+        kart.classList.add("etiketlendi");
+        setTimeout(function () { kart.remove(); }, 350);
+      });
+  });
+});
+</script>
+</body>
+</html>

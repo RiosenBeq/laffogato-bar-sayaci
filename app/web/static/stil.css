@@ -781,7 +781,7 @@ img.kucuk { height: 40px; border-radius: 6px; display: block; }
 .bardak-alt { padding: 6px 9px; font-size: 0.78rem; color: var(--metin-2); }
 
 /* ---------- kütüphane / tarama ---------- */
-.foto-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 12px; margin: 12px 0; }
+.foto-izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 12px 0; }
 .foto-kart {
   border: 1px solid var(--cam-sinir);
   border-radius: var(--radius-kucuk);
@@ -821,3 +821,15 @@ img.kucuk { height: 40px; border-radius: 6px; display: block; }
 .giris-kutusu h1 { margin: 0; font-size: 1.2rem; letter-spacing: -0.01em; }
 .giris-kutusu form { display: grid; gap: 12px; text-align: left; }
 .giris-kutusu .dugme { justify-content: center; }
+
+/* Bardak eğitimi: üç düğmeli etiketleme ızgarası */
+.foto-izgara .etiket-grubu {
+  display: flex; flex-direction: column; gap: 3px; padding: 6px;
+}
+.etiket-grubu button {
+  border: 1px solid var(--cizgi); background: rgba(255, 255, 255, 0.72);
+  border-radius: 7px; padding: 3px 8px; cursor: pointer;
+  font-size: 0.74rem; font-family: inherit; color: var(--metin);
+}
+.etiket-grubu button:hover { background: #fff; border-color: var(--vurgu); }
+.foto-kart.etiketlendi { opacity: 0.35; transform: scale(0.96); transition: 0.3s; }

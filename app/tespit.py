@@ -20,6 +20,23 @@ SINIF_ESLEME: dict[int, str] = {
 }
 
 
+# Seramik fincan/kupa COCO'da sık sık "bowl" ya da "vase" olarak çıkar ve
+# bugün SESSİZCE atılır. Bu sınıflar YALNIZCA eğitilmiş bardak doğrulayıcı
+# devredeyken sayıma girer (genis_aday=True); model yokken sistem bugünkü
+# davranışını birebir korur. Aynı "bardak" tipine eşlendikleri için NMS'te
+# aynı uzaya düşerler — bir fincan iki kez sayılmaz.
+# Bu sınıflar "aday" tipiyle döner, "bardak" ile DEĞİL: doğrulayıcı bunlara
+# AÇIKÇA "bardak" demedikçe sayıma girmezler. Aksi halde tezgâhtaki seramik
+# şeker kâsesi, model ona "belirsiz" dediğinde bardak olarak sayılırdı.
+GENIS_ADAY_ESLEME: dict[int, str] = {45: "aday", 75: "aday"}
+
+# Eğitim verisi toplarken taranan aday sınıflar (bardak olabilecek her şey).
+# Geniş tutulur ki kullanıcı hem bardakları hem "bardak değil" örneklerini
+# etiketleyebilsin.
+TOPLAMA_SINIFLARI: dict[int, str] = {**SINIF_ESLEME, **GENIS_ADAY_ESLEME}
+# Eğitim verisi ve canlı doğrulama için "bardak olabilecek" tipler
+BARDAK_TIPLERI = ("bardak", "aday")
+
 # Kişi (COCO 0) eşiği çarpanı ve gürültü kutusu alt sınırı
 KISI_ESIK_CARPANI = 0.8
 EN_KUCUK_KENAR_PX = 6
@@ -54,6 +71,9 @@ class Tespitci:
         self._girdi_adi = girdi.name
         self._boy = int(girdi.shape[2])
         self.guven = guven
+        # Geniş aday kipi: bardak doğrulayıcı devredeyken bowl/vase de aday
+        # sayılır. Varsayılan KAPALI — model yokken davranış değişmez.
+        self.genis_aday = False
         self._kilit = threading.Lock()
 
     def bul(self, kare: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -62,6 +82,43 @@ class Tespitci:
         with self._kilit:
             cikti = self._oturum.run(None, {self._girdi_adi: girdi})[0]
         return self._son_isle(cikti[0], oran, kare.shape[1], kare.shape[0])
+
+    def adaylari_bul(
+        self, kare: np.ndarray, guven: float = 0.20
+    ) -> list[tuple[tuple[float, float, float, float], float, int]]:
+        """Eğitim verisi toplamak için: bardak OLABİLECEK her aday kutu.
+
+        Canlı sayımdan bağımsızdır ve eşiği bilerek düşüktür — kullanıcı
+        zayıf tespitleri de etiketleyebilsin. Döner: [(kutu, güven, coco_id)].
+        """
+        eski_guven, eski_genis = self.guven, self.genis_aday
+        self.guven, self.genis_aday = guven, True
+        try:
+            girdi, oran = self._on_isle(kare)
+            with self._kilit:
+                cikti = self._oturum.run(None, {self._girdi_adi: girdi})[0]
+            kutular, guvenler, tipler = self._son_isle(cikti[0], oran, kare.shape[1], kare.shape[0])
+        finally:
+            self.guven, self.genis_aday = eski_guven, eski_genis
+
+        # Sınıf numarası _son_isle'dan dönmüyor; kutuları yeniden eşlemek yerine
+        # COCO bardak sınıfı bilgisini kutu boyutundan DEĞİL, ikinci bir hızlı
+        # geçişle alırız: burada yalnızca "bugünkü sayım bunu bardak sayar mıydı"
+        # bilgisi gerekiyor, o da dar eşlemeyle aynı kareyi taramaktır.
+        dar_kutular, _, dar_tipler = self.bul(kare)
+        adaylar = []
+        for kutu, g, tip in zip(kutular, guvenler, tipler, strict=True):
+            # Yalnızca BARDAK OLABİLECEK kutular. Kişi kutuları da negatif
+            # örnek olurdu ama fazlasıyla kolay ayırt edilir; kullanıcının
+            # etiketleme emeği bardağa benzeyen kutulara harcanmalı.
+            if tip not in BARDAK_TIPLERI:
+                continue
+            coco_bardak = any(
+                t == "bardak" and _ortusuyor(kutu, dk)
+                for dk, t in zip(dar_kutular, dar_tipler, strict=True)
+            )
+            adaylar.append((tuple(float(v) for v in kutu), float(g), 1 if coco_bardak else 0))
+        return adaylar
 
     def _on_isle(self, kare: np.ndarray) -> tuple[np.ndarray, float]:
         dolgulu = np.full((self._boy, self._boy, 3), 114, dtype=np.uint8)
@@ -93,7 +150,8 @@ class Tespitci:
         # Kişiler sahnede küçük/kısmen örtülü görünür; eşiği biraz daha cömert
         # tutmak kaçan kişileri azaltır (yanlış pozitifler NMS + takip ile elenir)
         sinif_esikleri = np.where(sinif_idler == 0, self.guven * KISI_ESIK_CARPANI, self.guven)
-        maske = (guvenler >= sinif_esikleri) & np.isin(sinif_idler, list(SINIF_ESLEME))
+        esleme = {**SINIF_ESLEME, **GENIS_ADAY_ESLEME} if self.genis_aday else SINIF_ESLEME
+        maske = (guvenler >= sinif_esikleri) & np.isin(sinif_idler, list(esleme))
         bos = (np.empty((0, 4)), np.empty((0,)), np.empty((0,), dtype=object))
         if not maske.any():
             return bos
@@ -131,5 +189,18 @@ class Tespitci:
         if len(secilen) == 0:
             return bos
         secilen = np.array(secilen).reshape(-1)
-        tipler = np.array([SINIF_ESLEME[int(s)] for s in sinif_idler[secilen]], dtype=object)
+        tipler = np.array([esleme[int(s)] for s in sinif_idler[secilen]], dtype=object)
         return kutular[secilen], guvenler[secilen], tipler
+
+
+def _ortusuyor(a, b, esik: float = 0.6) -> bool:
+    """İki kutu büyük ölçüde aynı yeri mi gösteriyor (IoU)?"""
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    kx1, ky1 = max(ax1, bx1), max(ay1, by1)
+    kx2, ky2 = min(ax2, bx2), min(ay2, by2)
+    if kx2 <= kx1 or ky2 <= ky1:
+        return False
+    kesisim = (kx2 - kx1) * (ky2 - ky1)
+    birlesim = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - kesisim
+    return birlesim > 0 and kesisim / birlesim >= esik

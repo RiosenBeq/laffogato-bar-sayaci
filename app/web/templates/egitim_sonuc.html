@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eğitim Sonucu — Laffogato</title>
+  <link rel="stylesheet" href="/static/stil.css?v=9">
+</head>
+<body>
+<header>
+  <div class="cubuk">
+    <h1>☕ Laffogato <span class="ince">eğitim sonucu</span></h1>
+    <nav class="ust-nav">
+      <a href="/">Sayaç</a>
+      <a href="/egitim" class="aktif">Bardak eğitimi</a>
+      <a href="/kutuphane">Kütüphane</a>
+      <a href="/tarama">Kare tarama</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  {% if sonuc.hata %}
+  <section class="kart">
+    <h2>Eğitim çalıştırılamadı</h2>
+    <div class="uyari">{{ sonuc.hata }}</div>
+    <p class="not">Bu bir arıza değil: sistem, karşılığı olmayan bir isabet sayısı
+      göstermektense eğitimi hiç çalıştırmamayı tercih eder. Elinizdeki sayılar —
+      {{ sonuc.bardak_sayisi }} "bizim bardağımız", {{ sonuc.degil_sayisi }} "bardak değil",
+      {{ sonuc.parti_sayisi }} ayrı yükleme.</p>
+    <p><a class="dugme ikincil" href="/egitim">← Bardak eğitimine dön</a></p>
+  </section>
+  {% else %}
+  <section class="kart">
+    <h2>{{ "Yeni model devreye alındı" if sonuc.devreye_alindi else "Yeni model devreye ALINMADI" }}</h2>
+    <p{% if sonuc.devreye_alindi %} class="basari"{% else %} class="uyari"{% endif %}>{{ sonuc.sebep }}</p>
+
+    <h3>Aynı {{ sonuc.test_sayisi }} kırpıkta karşılaştırma</h3>
+    <table>
+      <tr><th></th><th>Bugünkü yöntem</th><th>Yeni model</th></tr>
+      <tr><th>Doğru</th><td>{{ sonuc.eski.dogru }}</td><td>{{ sonuc.yeni.dogru }}</td></tr>
+      <tr><th>Yanlış</th><td>{{ sonuc.eski.yanlis }}</td><td>{{ sonuc.yeni.yanlis }}</td></tr>
+      <tr><th>Belirsiz</th>
+        <td>{{ sonuc.eski.belirsiz }}</td>
+        <td><b>{{ sonuc.yeni.belirsiz }}</b></td></tr>
+      <tr><th>İsabet</th>
+        <td>{{ sonuc.eski.isabet_metni }}</td>
+        <td><b>{{ sonuc.yeni.isabet_metni }}</b></td></tr>
+    </table>
+    <p class="not"><b>İsabet</b> = karar verebildiklerinin ne kadarı doğru
+      (belirsizler hariç). <b>Belirsiz</b> = "bu bizim bardağımız mı?" sorusuna
+      cevap verilemeyen kırpık sayısı. Bugünkü yöntem, kütüphanedeki renk/desen
+      parmak izi eşleştirmesidir — eşleşme bulamayınca "belirsiz" der.
+      Kütüphanede hiç nesne tanıtılmamışsa bugünkü yöntem <b>hiçbir kırpığa
+      karar veremez</b>; bu durumda isabet yüzdesi gösterilmez, çünkü yöntem
+      yanlış cevap vermiş değil, hiç cevap verememiştir.</p>
+
+    <table>
+      <tr><th>Model sürümü</th><td>{{ sonuc.surum }}{% if sonuc.devreye_alindi %} <b>(devrede)</b>{% endif %}</td></tr>
+      <tr><th>Eğitim kırpığı</th><td>{{ sonuc.egitim_sayisi }}</td></tr>
+      <tr><th>Test kırpığı</th>
+        <td>{{ sonuc.test_sayisi }} <span class="not">(ayrı yüklemelerden — eğitimde hiç görülmedi)</span></td></tr>
+      <tr><th>Etiketli veri</th>
+        <td>{{ sonuc.bardak_sayisi }} bardak / {{ sonuc.degil_sayisi }} değil,
+          {{ sonuc.parti_sayisi }} ayrı yükleme</td></tr>
+    </table>
+
+    {% for u in sonuc.uyarilar %}<p class="uyari">{{ u }}</p>{% endfor %}
+
+    {% if sonuc.devreye_alindi %}
+    <p class="not">Sistem yeni modeli birkaç saniye içinde, yeniden başlatmadan
+      kullanmaya başlar. Bundan sonra hazır modelin "kâse/vazo" sandığı fincanlar
+      da değerlendirilir ve "bardak değil" denen kutular sayıma girmez.
+      Beğenmezseniz Bardak Eğitimi sayfasından tek tıkla devreden çıkarabilirsiniz.</p>
+    {% else %}
+    <p class="not">Bu sürüm kayıt altına alındı ama <b>sistemin davranışı değişmedi</b>.
+      Daha fazla ve daha çeşitli görüntü yükleyip (farklı gün, farklı ışık,
+      kameranın kendi açısı) yeniden deneyin.</p>
+    {% endif %}
+    <p><a class="dugme ikincil" href="/egitim">← Bardak eğitimine dön</a></p>
+  </section>
+  {% endif %}
+</main>
+</body>
+</html>
