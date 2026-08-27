@@ -382,9 +382,7 @@ class Analiz:
                 # YALNIZCA sayılan bardaklar hatırlanır. Bastırılmış izleri de
                 # hatırlamak, tezgâhın o noktasını kalıcı bir "yutma alanı"na
                 # çevirir ve sonraki gerçek bardakların hepsi kaybolurdu.
-                self._tekrar.hatirla(
-                    durum.son_merkez, durum.son_boyut, durum.renk_imzasi, saat
-                )
+                self._tekrar.hatirla(durum.son_merkez, durum.son_boyut, durum.renk_imzasi, saat)
                 self._bardagi_kaydet(baglanti, durum)
 
     def _bardagi_kaydet(self, baglanti, durum: BardakDurumu) -> None:
