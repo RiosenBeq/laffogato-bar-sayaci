@@ -188,7 +188,15 @@ def onizleme(istek: Request):
 
 
 @router.get("/canli")
-def canli(istek: Request, gun: str = "", baglanti=Depends(baglanti_al)):
+def canli(istek: Request, gun: str = "", sonra: int = 0, baglanti=Depends(baglanti_al)):
+    """Ekranın 2 saniyede bir yokladığı canlı özet.
+
+    `sonra`: ekranın gördüğü son olay numarası. Yanıttaki `olaylar` listesi
+    yalnızca ondan YENİ olanları içerir — böylece aynı pencerede kapanan iki
+    bardak iki ayrı uyarı olur ve hiçbir olay atlanmaz. Eskiden ekran sayaç
+    farkına bakıyordu: iki bardak tek uyarıya iniyor, geçmiş gün
+    görüntülenirken uyarı hiç gelmiyordu.
+    """
     gun = gun or zaman.bugun()
     analiz = getattr(istek.app.state, "analiz", None)
     return {
@@ -196,6 +204,9 @@ def canli(istek: Request, gun: str = "", baglanti=Depends(baglanti_al)):
         "canli_bardak": getattr(analiz, "canli_bardak", 0),
         "canli_kisi": getattr(analiz, "canli_kisi", 0),
         "durum": getattr(analiz, "durum", "başlatılmadı"),
+        "son_hata": getattr(analiz, "son_hata", ""),
+        "olaylar": analiz.olaylar(sonra) if analiz is not None else [],
+        "son_olay_id": getattr(analiz, "son_olay_id", 0),
     }
 
 

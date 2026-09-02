@@ -837,3 +837,12 @@ img.kucuk { height: 40px; border-radius: 6px; display: block; }
 /* NextGen imzası */
 .nextgen-imza { display: flex; align-items: center; gap: 6px; justify-content: center; opacity: 0.75; }
 .ng-logo { width: 16px; height: 16px; }
+
+/* analiz hatasi (canli durumdan gelir) */
+.hata-metni {
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.7);
+  border: 1px solid rgba(252, 165, 165, 0.8);
+  border-radius: 8px;
+  padding: 8px 12px;
+}

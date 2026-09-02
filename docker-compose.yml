@@ -13,7 +13,10 @@ services:
     build: .
     image: laffogatopped
     ports:
-      - "8100:8100"
+      # YALNIZCA bu bilgisayara açık. "8100:8100" yapılırsa kafedeki wifi'ye
+      # bağlanan herkes barı canlı izleyebilir ve görüntü kaynağını
+      # değiştirebilir; PANEL_SIFRESI boşsa hiçbir engel yoktur.
+      - "127.0.0.1:8100:8100"
     volumes:
       - ./veri:/uygulama/veri          # veritabanı, görüntüler, nesne kütüphanesi
       - ./.env:/uygulama/.env:ro

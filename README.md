@@ -127,3 +127,39 @@ PANEL_SIFRESI=buraya-sifrenizi-yazin
 
 Şifreyi unutursanız `.env` dosyasından silmeniz yeterli. `.env` GitHub'a
 gönderilmez — kamera şifreniz ve panel şifreniz yalnızca kafedeki bilgisayarda durur.
+
+---
+
+## Sayım nasıl karar veriyor (özet)
+
+Bardak, kadrajda göründüğü sürece TEK bir takip numarasıyla izlenir. Kadrajdan
+çıkınca (takipçinin hafızası dolmadan hemen önce) kararı kesinleşir:
+
+1. **Nereye gitti?** Önce bardağın SON gözlemlerine bakılır — tezgâhta ne kadar
+   beklediği değil, sonunda hangi tarafa geçtiği önemlidir. Son gözlemler net
+   bir taraf göstermiyorsa tüm yaşamı boyunca hangi tarafta daha çok görüldüğüne
+   bakılır.
+2. **Hangi taraf?** Karar, bardağın tezgâha DEĞDİĞİ nokta (kutunun alt-ortası)
+   ile verilir; kutunun merkezi açılı kamerada yanıltır.
+3. **Emin değilse "belirsiz".** Uydurma sayı üretilmez.
+
+Kanıt fotoğrafı yalnızca **gerçekten sayılan** bardaklar için diske yazılır ve
+bardağın son hâlini gösterir.
+
+## Uyarılar
+
+Yeni bir bardak sayıldığında ekranda bildirim çıkar. İsteğe bağlı olarak:
+
+- **Sesli bildirim** — kısa bir bip. Tarayıcı kuralı gereği sayfaya bir kez
+  tıklamak gerekir; ekranda "ses beklemede" yazarsa sebebi budur.
+- **Sesli okuma** — "bardak müşteriye gitti" diye Türkçe seslendirir. Anons
+  sistemi bağlanana kadar en pratik duyurma yoludur.
+
+Uyarılar sunucudaki olay akışından gelir: aynı anda kapanan iki bardak iki ayrı
+uyarı olur, hiçbiri atlanmaz.
+
+## Günlük
+
+`veri/loglar/laffogato.log` — sorun bildirirken bu dosyadaki satırları olduğu
+gibi kopyalayın. Analizde bir hata olursa ana sayfada da kırmızı bir satır
+olarak görünür.

@@ -14,10 +14,15 @@ import numpy as np
 # ince ayar yapılırsa isabet belirgin şekilde artar — demo bunu vaat etmez.
 SINIF_ESLEME: dict[int, str] = {
     0: "kisi",
-    39: "bardak",  # şişe biçimli takeaway bardaklar
     40: "bardak",  # kadeh / cam bardak
     41: "bardak",  # fincan / kupa
 }
+
+# COCO 39 = "bottle". Takeaway bardak bu sınıfa düşebilir, AMA tezgâhta duran
+# su/şurup/süt şişesi de düşer. Doğrudan "bardak" sayılınca her şişe bir
+# "yapılan bardak" olarak günlük sayaca giriyordu. Artık ADAY: yalnızca
+# eğitilmiş doğrulayıcı ona AÇIKÇA "bardak" derse sayılır.
+_SISE_SINIFI = 39
 
 
 # Seramik fincan/kupa COCO'da sık sık "bowl" ya da "vase" olarak çıkar ve
@@ -28,7 +33,7 @@ SINIF_ESLEME: dict[int, str] = {
 # Bu sınıflar "aday" tipiyle döner, "bardak" ile DEĞİL: doğrulayıcı bunlara
 # AÇIKÇA "bardak" demedikçe sayıma girmezler. Aksi halde tezgâhtaki seramik
 # şeker kâsesi, model ona "belirsiz" dediğinde bardak olarak sayılırdı.
-GENIS_ADAY_ESLEME: dict[int, str] = {45: "aday", 75: "aday"}
+GENIS_ADAY_ESLEME: dict[int, str] = {_SISE_SINIFI: "aday", 45: "aday", 75: "aday"}
 
 # Eğitim verisi toplarken taranan aday sınıflar (bardak olabilecek her şey).
 # Geniş tutulur ki kullanıcı hem bardakları hem "bardak değil" örneklerini
@@ -144,15 +149,25 @@ class Tespitci:
         cikti[:, 2:4] = np.exp(cikti[:, 2:4]) * adimlar
 
         skorlar = cikti[:, 4:5] * cikti[:, 5:]
-        sinif_idler = skorlar.argmax(1)
-        guvenler = skorlar[np.arange(len(skorlar)), sinif_idler]
+        esleme = {**SINIF_ESLEME, **GENIS_ADAY_ESLEME} if self.genis_aday else SINIF_ESLEME
+        bos = (np.empty((0, 4)), np.empty((0,)), np.empty((0,), dtype=object))
+
+        # SINIF SEÇİMİ: 80 COCO sınıfının TÜMÜ üzerinde argmax almak, bizim
+        # ilgilendiğimiz sınıfı ilgilenmediğimiz bir sınıf geçtiğinde tespiti
+        # TAMAMEN düşürüyordu. Fincan/kadeh/kâse/vazo/masa birbirine en çok
+        # karışan COCO sınıflarıdır: 0,42 ile "fincan", 0,45 ile "yemek masası"
+        # bulunan gerçek bir bardak sessizce kayboluyordu. Artık yalnızca
+        # ilgilendiğimiz sınıflara bakılır (YOLOX'un class-aware yolu).
+        ilgi_idler = np.array(sorted(esleme))
+        ilgi_skorlari = skorlar[:, ilgi_idler]
+        yerel = ilgi_skorlari.argmax(1)
+        sinif_idler = ilgi_idler[yerel]
+        guvenler = ilgi_skorlari[np.arange(len(ilgi_skorlari)), yerel]
 
         # Kişiler sahnede küçük/kısmen örtülü görünür; eşiği biraz daha cömert
         # tutmak kaçan kişileri azaltır (yanlış pozitifler NMS + takip ile elenir)
         sinif_esikleri = np.where(sinif_idler == 0, self.guven * KISI_ESIK_CARPANI, self.guven)
-        esleme = {**SINIF_ESLEME, **GENIS_ADAY_ESLEME} if self.genis_aday else SINIF_ESLEME
-        maske = (guvenler >= sinif_esikleri) & np.isin(sinif_idler, list(esleme))
-        bos = (np.empty((0, 4)), np.empty((0,)), np.empty((0,), dtype=object))
+        maske = guvenler >= sinif_esikleri
         if not maske.any():
             return bos
 
@@ -177,7 +192,15 @@ class Tespitci:
         # eşlenen sınıflar (örn. otomobil+kamyon → arac) birbirini bastırabilsin
         # ki aynı nesne iki sınıf olarak çift sayılmasın; farklı tipler
         # (kişi vs diğer) ise birbirini bastırmasın.
-        tip_indeksleri = np.where(sinif_idler == 0, 0.0, 1.0)
+        # Üç bant: kişi / bardak / aday. Aday (kâse, vazo, şişe) ile bardak
+        # AYNI banda düşerse, bardağın üstüne binen bir kâse kutusu NMS'te
+        # bardağı bastırabiliyordu; hayatta kalan kutu "aday" tipinde olduğu
+        # için doğrulayıcı ona açıkça "bardak" demedikçe eleniyordu. Sonuç:
+        # doğrulayıcıyı açmak bardak sayısını DÜŞÜRÜYORDU.
+        tipler_dizisi = np.array([esleme[int(sid)] for sid in sinif_idler], dtype=object)
+        tip_indeksleri = np.where(
+            sinif_idler == 0, 0.0, np.where(tipler_dizisi == "aday", 2.0, 1.0)
+        ).astype(float)
         kaydirma = tip_indeksleri[:, None] * (max(kare_g, kare_y) + 1.0)
         nms_kutulari = kutular + kaydirma
         secilen = cv2.dnn.NMSBoxes(

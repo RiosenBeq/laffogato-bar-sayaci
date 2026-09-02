@@ -14,6 +14,7 @@ Neden takip bazlı: tek karede bardak tezgâhın üstündeyken de görünür;
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 
 MUSTERI = "musteri"
@@ -27,6 +28,18 @@ EN_AZ_GORULME = 4
 # Kararın verilebilmesi için baskın tarafın gözlem oranı
 BASKINLIK_ORANI = 0.60
 
+# Kararda önce SON gözlemlere bakılır: bardağın nereye GİTTİĞİ, nerede
+# beklediğinden önemlidir.
+#
+# Neden: karar tüm yaşam boyu gözlem sayısına bakınca, tezgâhta 2 dakika
+# bekleyip müşteriye 10 saniyede giden bardak "barista" yazılıyordu. Bar ne
+# kadar yoğunsa (bardak o kadar bekler) hata o kadar büyüyordu. Son gözlemler
+# baskın bir taraf gösteriyorsa karar odur; göstermiyorsa tüm yaşam boyu
+# oylamasına düşülür.
+SON_GOZLEM_PENCERESI = 8
+# Son pencerede karar verebilmek için gereken en az gözlem
+SON_GOZLEM_EN_AZ = 4
+
 
 @dataclass
 class BardakDurumu:
@@ -37,7 +50,14 @@ class BardakDurumu:
     son_zaman: str
     gorulme: int = 0
     bolge_sayaci: dict[str, int] = field(default_factory=dict)
+    # Son gözlemlerin bölgeleri (kararda önceliklidir — bkz. SON_GOZLEM_PENCERESI)
+    son_bolgeler: deque = field(default_factory=lambda: deque(maxlen=SON_GOZLEM_PENCERESI))
     foto: str | None = None
+    # Kanıt kırpığı DİSKE değil BELLEĞE alınır ve yalnızca bardak gerçekten
+    # sayılırsa yazılır. Eskiden her yeni iz için (birkaç karelik yanlış tespit
+    # dahil) dosya yazılıyordu; hiçbiri temizlenmediği için kafe bilgisayarının
+    # diski sessizce doluyordu.
+    foto_veri: bytes | None = None
     # Tekrar koruması için: bardağın son görüldüğü yer/boy ve renk imzası
     son_merkez: tuple[float, float] = (0.0, 0.0)
     son_boyut: tuple[float, float] = (0.0, 0.0)
@@ -50,23 +70,38 @@ class BardakDurumu:
         self.son_zaman = zaman_utc
         if bolge:
             self.bolge_sayaci[bolge] = self.bolge_sayaci.get(bolge, 0) + 1
+            self.son_bolgeler.append(bolge)
 
     def sayilir_mi(self) -> bool:
         """Sayıma girer mi? Tekrar sayım koruması işaretlediyse GİRMEZ."""
         return self.gorulme >= EN_AZ_GORULME and not self.tekrar_mi
 
     def karar(self) -> str:
-        """Bardağın kime gittiği. Kanıt zayıfsa 'belirsiz'."""
-        musteri = self.bolge_sayaci.get(MUSTERI, 0)
-        barista = self.bolge_sayaci.get(BARISTA, 0)
-        toplam = musteri + barista
-        if toplam == 0:
-            return BELIRSIZ  # hiç bölgede görülmedi (bölgeler çizilmemiş olabilir)
-        if musteri / toplam >= BASKINLIK_ORANI:
-            return MUSTERI
-        if barista / toplam >= BASKINLIK_ORANI:
-            return BARISTA
-        return BELIRSIZ  # bardak iki taraf arasında gidip geldi, emin değiliz
+        """Bardağın kime gittiği. Kanıt zayıfsa 'belirsiz'.
+
+        Önce SON gözlemlere bakılır (bardak nereye gitti), yeterli ve baskın
+        değilse tüm yaşam boyu oylamasına düşülür.
+        """
+        if len(self.son_bolgeler) >= SON_GOZLEM_EN_AZ:
+            son = _baskin(
+                sum(1 for b in self.son_bolgeler if b == MUSTERI),
+                sum(1 for b in self.son_bolgeler if b == BARISTA),
+            )
+            if son != BELIRSIZ:
+                return son
+        return _baskin(self.bolge_sayaci.get(MUSTERI, 0), self.bolge_sayaci.get(BARISTA, 0))
+
+
+def _baskin(musteri: int, barista: int) -> str:
+    """İki sayaçtan baskın olanı; hiçbiri baskın değilse 'belirsiz'."""
+    toplam = musteri + barista
+    if toplam == 0:
+        return BELIRSIZ  # hiç bölgede görülmedi (bölgeler çizilmemiş olabilir)
+    if musteri / toplam >= BASKINLIK_ORANI:
+        return MUSTERI
+    if barista / toplam >= BASKINLIK_ORANI:
+        return BARISTA
+    return BELIRSIZ  # bardak iki taraf arasında gidip geldi, emin değiliz
 
 
 def nokta_poligonda(nokta: tuple[float, float], poligon: list[tuple[float, float]]) -> bool:
@@ -84,6 +119,20 @@ def nokta_poligonda(nokta: tuple[float, float], poligon: list[tuple[float, float
             if x < kesisim:
                 icinde = not icinde
     return icinde
+
+
+def zemin_noktasi(
+    kutu: tuple[float, float, float, float], kare_boyutu: tuple[float, float]
+) -> tuple[float, float]:
+    """Kutunun ALT-ORTA noktası, normalize (0-1).
+
+    Bölge kararı bu noktayla verilir. Kutu merkezi kullanılırsa, bara açılı
+    bakan kamerada uzun bir bardağın merkezi ayak izinden belirgin şekilde
+    yukarıda kalır ve sınırın hemen gerisindeki bardak "önünde" görünürdü.
+    """
+    x1, _, x2, y2 = kutu
+    genislik, yukseklik = kare_boyutu
+    return ((x1 + x2) / 2.0 / genislik, y2 / yukseklik)
 
 
 def bolge_bul(

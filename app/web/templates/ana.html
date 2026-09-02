@@ -175,6 +175,12 @@
         <input type="checkbox" data-ses-anahtari>
         Yeni bardak sayıldığında sesli bildirim çal
       </label>
+      <label class="satir-form onay-kutusu">
+        <input type="checkbox" data-konusma-anahtari>
+        Sesli oku ("bardak müşteriye gitti") — anons sistemi bağlanana kadar
+      </label>
+      <p class="not" id="ses-durumu"></p>
+      <p class="not hata-metni" id="son-hata" hidden></p>
 
       <h3>Görüntü kaynağı
         <span class="ipucu" tabindex="0">?<span class="balon balon-sag"><b>Hangisini seçmeliyim?</b>
@@ -412,9 +418,13 @@ setInterval(function () {
     }).catch(function () {});
 }, 1000);
 
-var oncekiSayilar = null;
+// Uyarılar SAYAÇ FARKINDAN değil, sunucunun olay akışından gelir: aynı 2
+// saniyelik pencerede kapanan iki bardak artık iki ayrı uyarı olur, geçmiş gün
+// görüntülenirken de canlı uyarı gelmeye devam eder.
+var sonOlayId = null;
 setInterval(function () {
-  fetch("/canli?gun={{ gun }}").then(function (y) { return y.json(); }).then(function (v) {
+  var adres = "/canli?gun={{ gun }}" + (sonOlayId === null ? "" : "&sonra=" + sonOlayId);
+  fetch(adres).then(function (y) { return y.json(); }).then(function (v) {
     document.getElementById("s-toplam").textContent = v.toplam;
     document.getElementById("s-musteri").textContent = v.musteri;
     document.getElementById("s-barista").textContent = v.barista;
@@ -425,26 +435,27 @@ setInterval(function () {
     var t = v.toplam || 1;
     document.getElementById("s-musteri-yuzde").textContent = Math.round(v.musteri * 100 / t);
     document.getElementById("s-barista-yuzde").textContent = Math.round(v.barista * 100 / t);
-    if (oncekiSayilar && window.Bildirim) {
-      if (v.musteri > oncekiSayilar.musteri) {
-        Bildirim.goster("<b>+" + (v.musteri - oncekiSayilar.musteri) +
-          " bardak</b> — müşteri içti ☕", "iyi", 4000);
-      }
-      if (v.barista > oncekiSayilar.barista) {
-        Bildirim.goster("<b>+" + (v.barista - oncekiSayilar.barista) +
-          " bardak</b> — barista kendine yaptı", "", 4000);
-      }
-      if (v.belirsiz > oncekiSayilar.belirsiz) {
-        Bildirim.goster("<b>+" + (v.belirsiz - oncekiSayilar.belirsiz) +
-          " bardak</b> — karar verilemedi (belirsiz)", "", 4000);
-      }
-      if (v.toplam > oncekiSayilar.toplam) Bildirim.sesCal();
+    var hataKutusu = document.getElementById("son-hata");
+    if (hataKutusu) {
+      hataKutusu.textContent = v.son_hata || "";
+      hataKutusu.hidden = !v.son_hata;
     }
-    oncekiSayilar = v;
+    // İlk turda geçmiş olaylar için uyarı verme (sayfa yeni açıldı)
+    if (sonOlayId !== null && window.Bildirim) {
+      (v.olaylar || []).forEach(function (olay) { Bildirim.olayiDuyur(olay); });
+    }
+    sonOlayId = v.son_olay_id || 0;
+    var sesKutusu = document.getElementById("ses-durumu");
+    if (sesKutusu && window.Bildirim) {
+      var durum = Bildirim.sesDurumu();
+      sesKutusu.textContent = durum === "beklemede"
+        ? "Ses beklemede — tarayıcı kuralı gereği sayfaya bir kez tıklayın."
+        : (durum === "yok" ? "Bu tarayıcı ses çalamıyor." : "");
+    }
   }).catch(function () {});
 }, 2000);
 </script>
-<script src="/static/bildirim.js?v=8"></script>
+<script src="/static/bildirim.js?v=9"></script>
 <script src="/static/bolge.js?v=8"></script>
 <script src="/static/kaynak.js?v=8"></script>
 </body>
