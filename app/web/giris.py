@@ -44,7 +44,11 @@ def giris_sayfasi(istek: Request):
 @router.post("/giris")
 def giris_yap(istek: Request, sifre: str = Form("")):
     beklenen = istek.app.state.ayarlar.panel_sifresi
-    if not beklenen or not hmac.compare_digest(sifre, beklenen):
+    # compare_digest METİN karşılaştırmasında ASCII DIŞI karakteri kabul etmez
+    # ve TypeError fırlatır: "şifre123" gibi bir panel şifresi girişi kalıcı
+    # olarak 500 hatasına çeviriyor, kullanıcı sisteme HİÇ giremiyordu.
+    # Bayta çevirerek karşılaştırmak hem doğru hem hâlâ zamanlama-güvenli.
+    if not beklenen or not hmac.compare_digest(sifre.encode("utf-8"), beklenen.encode("utf-8")):
         return RedirectResponse("/giris?hata=1", status_code=303)
     yanit = RedirectResponse("/", status_code=303)
     yanit.set_cookie(CEREZ_ADI, _imza(beklenen), httponly=True, samesite="lax")
