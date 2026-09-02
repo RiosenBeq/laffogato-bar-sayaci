@@ -212,3 +212,34 @@ def test_ekran_metni_kullaniciya_NE_YAPACAGINI_soyler(kur):
     assert "kurulumu yapan kişi" in metin  # 2. adım: asıl çözüm
     assert "sayımı durur" in metin  # sonucu da söylenir
     assert metin in sayfa
+
+
+def test_beklenmeyen_model_hatasi_analiz_dongusunu_oldurmez(kur, monkeypatch):
+    """ModelHatasi DIŞINDA bir istisna gelirse iş parçacığı ölmemeli.
+
+    Neden bu test var: `Tespitci` yalnızca `ModelHatasi` fırlatmaz. Dinamik
+    eksenli bir model dışa aktarımında ValueError gelir. Bu dal yakalanmazsa
+    istisna `_dongu`'den KAÇAR, analiz iş parçacığı ölür, durum sonsuza dek
+    "başlatılıyor" kalır ve kullanıcının ekranında HİÇBİR açıklama çıkmaz —
+    sistem sessizce durmuş olur. Kardeş depoda (OTOPARK-DEMO) bu koruma vardı,
+    burada yoktu; çalışma zamanında ölçülerek bulundu.
+
+    İki şey birden çivileniyor: (1) döngü düzgün çıkıyor ve kullanıcı markalı
+    bir açıklama görüyor, (2) ham istisna metni ekrana SIZMIYOR.
+    """
+    ayar = kur("yolox_s.onnx", bozuk=False)
+
+    def _patla(*_args, **_kwargs):
+        # Metnin içine BİLEREK tam yol konuyor: sızarsa test yakalasın.
+        raise ValueError(f"beklenmedik biçim: {ayar.model_dosyasi}")
+
+    monkeypatch.setattr("app.analiz.Tespitci", _patla)
+    with TestClient(uygulama_olustur(ayar, analiz_ac=False)) as istemci:
+        analiz = _modeli_yuklemeyi_dene(ayar)  # istisna buradan KAÇMAMALI
+        istemci.app.state.analiz = analiz
+        sayfa = istemci.get("/").text
+
+    assert analiz.model_hatasi, "İş parçacığı öldü: ekrana hiçbir uyarı düşmedi"
+    assert "NextGen AI İsabetli" in analiz.model_hatasi
+    assert analiz.model_hatasi in sayfa
+    _sizinti_yok(sayfa, ayar, "Sayaç sayfası (beklenmeyen hata)")

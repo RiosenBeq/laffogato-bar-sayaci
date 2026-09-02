@@ -7,6 +7,7 @@ video üzerinde deneme yapmaktır.
 
 from __future__ import annotations
 
+import logging
 import tempfile
 from pathlib import Path
 from urllib.parse import quote
@@ -25,6 +26,8 @@ from app.tespit import ModelHatasi, Tespitci
 from app.web.rotalar import baglanti_al, sablonlar
 
 router = APIRouter()
+
+_log = logging.getLogger("laffogato.tarama")
 
 # Aynı anda taranabilecek en çok kare (tarayıcı da, işlemci de boğulmasın)
 EN_COK_KARE = 12
@@ -338,7 +341,10 @@ async def tarama_yap(
         if tespitci is None:
             try:
                 tespitci = Tespitci(ayarlar.model_dosyasi, ayarlar.cihaz, guven=0.25)
-            except ModelHatasi:
+            except ModelHatasi as hata:
+                # Ekrana tarama.MODEL_YOK_UYARISI düşer (sade, markalı);
+                # tam yol ve özgün istisna metni yalnızca günlüğe yazılır.
+                _log.error("Tarama için tespit modeli açılamadı: %s", hata.teknik)
                 tespitci = None
         nesneler = nesne_deposu.nesneleri_yukle(baglanti, ayarlar.nesne_klasoru)
         sonuclar, kirpildi = _tarama_isle(ogeler, tespitci, nesneler, ayarlar.tarama_klasoru, esik)
