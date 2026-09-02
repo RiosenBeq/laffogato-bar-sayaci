@@ -135,3 +135,47 @@ def test_kaynak_cozumleme(ayarlar):
     assert replace(ayarlar, kaynak="1").kaynak_cozumle() == 1
     rtsp = "rtsp://kamera.local/stream"
     assert replace(ayarlar, kaynak=rtsp).kaynak_cozumle() == rtsp
+
+
+def test_statik_dosya_surumleri_esit():
+    """Şablonlar aynı stil.css'i farklı `?v=` ile isterse tarayıcı iki ayrı
+    kopya önbelleğe alır: bir sayfa yeni CSS'i alır, öbürü eski kalır ve
+    "bende düzeldi, sende düzelmedi" tablosu çıkar. Stil/JS değiştiğinde
+    numara HER şablonda birden artırılmalı."""
+    import re
+    from pathlib import Path
+
+    sablonlar = Path(__file__).resolve().parents[1] / "app" / "web" / "templates"
+    surumler = {}
+    for yol in sorted(sablonlar.glob("*.html")):
+        metin = yol.read_text(encoding="utf-8")
+        for dosya, surum in re.findall(r"/static/([\w.-]+\.(?:css|js))\?v=(\d+)", metin):
+            surumler.setdefault(surum, []).append(f"{yol.name}:{dosya}")
+    assert surumler, "şablonlarda sürümlü statik dosya çağrısı bulunamadı"
+    assert len(surumler) == 1, f"karışık sürüm numaraları: {surumler}"
+
+
+def test_teknoloji_karti_marka_adiyla_gorunur(istemci):
+    """Kullanıcı ekranda kütüphane/dosya adı değil kademe adı görmeli.
+    conftest'teki ayarlar tanınmayan bir dosyayı işaret ettiği için
+    "özel model" beklenir."""
+    sayfa = istemci.get("/").text
+    assert "Nesne tanıma: NextGen AI (özel model)" in sayfa
+
+
+def test_ekranda_teknik_kutuphane_adlari_gecmez():
+    """Şablonlarda model kütüphanesinin adı, veri kümesi adı, üretici adı ya
+    da dosya uzantısı görünmemeli — kullanıcıya tek ad tanıtılır: NextGen AI.
+    (Lisans atfı LICENSE-THIRD-PARTY dosyasındadır, ekranda değil.)"""
+    import re
+    from pathlib import Path
+
+    yasakli = re.compile(r"yolox|megvii|\bcoco\b|onnx", re.IGNORECASE)
+    kok = Path(__file__).resolve().parents[1] / "app" / "web"
+    for klasor in ("templates", "static"):
+        for yol in sorted((kok / klasor).iterdir()):
+            if yol.suffix.lower() not in (".html", ".js", ".css"):
+                continue
+            metin = yol.read_text(encoding="utf-8")
+            bulunan = yasakli.findall(metin)
+            assert not bulunan, f"{yol.name} içinde ekrana çıkan teknik ad: {bulunan}"

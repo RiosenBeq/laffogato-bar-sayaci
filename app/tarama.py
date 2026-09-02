@@ -20,7 +20,16 @@ import cv2
 import numpy as np
 
 from app.kutuphane import VARSAYILAN_ESIK, Nesne, en_iyi_eslesme
-from app.tespit import Tespitci
+from app.tespit import YENIDEN_BASLATMA_ONERISI, Tespitci
+
+# Model açılamadığında tarama sonucunun altında görünen uyarı.
+# Buraya hangi KADEME'nin (Hızlı/İsabetli) açılamadığı gelmez: tara() ayarları
+# görmez, yalnızca "model yok mu" bilgisini alır. Bu yüzden marka kademesiz
+# yazılır. Yapılacak adım, diğer iki ekrandakiyle AYNI cümledir — kullanıcı üç
+# ayrı ekranda üç ayrı çözüm okumasın.
+MODEL_YOK_UYARISI = (
+    f"NextGen AI hazır değil; bu yüzden tarama yapılamadı. {YENIDEN_BASLATMA_ONERISI}"
+)
 
 # İşaretli sonuç görüntüsünde kullanılan renkler (BGR)
 _RENK_EŞLESEN = (60, 190, 90)
@@ -62,7 +71,7 @@ def tara(
             dosya_adi=dosya_adi,
             sonuc_gorseli=_gorseli_yaz(gorsel, hedef_klasor),
             bulgular=[],
-            uyari="Tespit modeli yüklenemedi; tarama yapılamadı.",
+            uyari=MODEL_YOK_UYARISI,
         )
 
     kutular, guvenler, tipler = tespitci.bul(gorsel)

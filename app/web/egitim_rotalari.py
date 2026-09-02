@@ -122,7 +122,9 @@ async def gorsel_yukle(
         try:
             tespitci = Tespitci(ayarlar.model_dosyasi, ayarlar.cihaz, guven=0.20)
         except ModelHatasi as hata:
-            return 0, 0, str(hata)
+            # Eğitim sayfasına da yalnızca markalı, sade metin gider; dosya yolu
+            # ve özgün istisna metni tespit.py içinde günlüğe yazıldı.
+            return 0, 0, hata.mesaj
         kareler = _kareleri_coz(ogeler)
         if not kareler:
             return 0, 0, ""
@@ -135,7 +137,7 @@ async def gorsel_yukle(
         # Model yüklenemese bile geçici video dosyaları diskte kalmamalı
         _gecicileri_sil(ogeler)
     if model_hatasi:
-        return _egitime_don(hata=model_hatasi)
+        return _egitime_don(hata=f"Yüklenen görüntüler taranamadı. {model_hatasi}")
     if taranan == 0:
         buyuk = [ad for ad, _tur, veri in ogeler if veri is None]
         if buyuk:

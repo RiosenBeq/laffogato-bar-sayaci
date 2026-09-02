@@ -1,0 +1,21 @@
+# Satir sonlari platformlar arasinda bozulmasin: Windows'ta klonlanan bir
+# depodaki Baslat-Mac.command CRLF'e cevrilirse Mac'te calismaz
+# (bash: "cd: $'...\r'" hatasi verir). Tersi de dogru: LF'li bir .bat'ta
+# cmd.exe goto etiketlerini ve parantezli bloklari sessizce bozabilir.
+*.command text eol=lf
+*.sh      text eol=lf
+*.bat     text eol=crlf
+*.py      text eol=lf
+*.md      text eol=lf
+*.html    text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+*.sql     text eol=lf
+*.svg     text eol=lf
+*.toml    text eol=lf
+*.txt     text eol=lf
+*.yml     text eol=lf
+*.onnx    binary
+*.jpg     binary
+*.png     binary
+*.mp4     binary

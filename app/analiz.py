@@ -201,7 +201,10 @@ class Analiz:
         try:
             self._tespitci = Tespitci(self.ayarlar.model_dosyasi, self.ayarlar.cihaz)
         except ModelHatasi as hata:
-            self.model_hatasi = str(hata)
+            # Ekrana YALNIZCA sade metin çıkar (ana sayfadaki uyarı kutusu).
+            # Tam yol ve özgün istisna metni tespit.py içinde günlüğe yazıldı.
+            self.model_hatasi = hata.mesaj
+            self._log.error("Tespit modeli açılamadı: %s", hata.teknik)
             self.durum = "model yok"
 
         bekleme = 1.0

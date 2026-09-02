@@ -68,6 +68,28 @@ def kaynagi_kaydet(kok: Path, deger: str) -> None:
         raise AyarHatasi(f".env dosyasına yazılamadı: {hata.strerror}") from hata
 
 
+# Kullanıcıya gösterilen model adları — TEK KAYNAK.
+# Diskteki dosya adları teknik gerçektir ve DEĞİŞMEZ (sistem, indirme betiği ve
+# .env aynı adları kullanır); ekranda ise yalnızca kademe adı görünür.
+GORUNEN_MODEL_ADLARI: dict[str, str] = {
+    "yolox_tiny.onnx": "NextGen AI Hızlı",
+    "yolox_s.onnx": "NextGen AI İsabetli",
+}
+OZEL_MODEL_ADI = "NextGen AI (özel model)"
+
+
+def gorunen_model_adi(dosya_adi: str) -> str:
+    """Model dosyasının ekranda görünecek markalı adını verir.
+
+    Kullanıcı dosya adı değil kademe görür: Hızlı (az işlemci) ya da İsabetli
+    (daha az kaçırır). Tanınmayan her dosya "özel model" sayılır — kafenin
+    kendi eğittiği bir model de buraya düşer.
+    """
+    # Hem "models/yolox_s.onnx" hem Windows'un "models\\yolox_s.onnx" yazımı gelebilir
+    ad = str(dosya_adi).replace("\\", "/").rsplit("/", 1)[-1].strip().lower()
+    return GORUNEN_MODEL_ADLARI.get(ad, OZEL_MODEL_ADI)
+
+
 def _varsayilan_model(kok: Path) -> str:
     """MODEL_DOSYASI boşsa eldeki en isabetli model seçilir.
 

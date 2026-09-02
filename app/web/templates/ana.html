@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Laffogato — Bar Sayacı ({{ gun_etiketi }})</title>
-  <link rel="stylesheet" href="/static/stil.css?v=8">
+  <link rel="stylesheet" href="/static/stil.css?v=11">
 </head>
 <body>
 <header>
@@ -368,10 +368,12 @@
     <summary>Bu sistem neyle çalışıyor?</summary>
     <div class="kilavuz">
       <div class="kilavuz-adim"><span class="kilavuz-no"><span>🧠</span></span>
-        <span class="kilavuz-metin"><b>Nesne tespiti: YOLOX (S / Tiny)</b>
-          <small>Her karede bardak ve kişiyi bulan hazır yapay zeka modeli; eldeki
-          en isabetli sürüm otomatik seçilir. ONNX Runtime ile bilgisayarın
-          işlemcisinde çalışır, internet gerektirmez.</small></span></div>
+        <span class="kilavuz-metin"><b>Nesne tanıma: {{ model_adi }}</b>
+          <small>Her karede bardağı ve kişiyi bulan yapay zekâ modeli. İki kademesi
+          vardır: <b>Hızlı</b> daha az işlemci harcar, <b>İsabetli</b> daha az kaçırır;
+          bu bilgisayarda kurulu olanların en isabetlisi kendiliğinden seçilir —
+          şu an yüklü olan: <b>{{ model_adi }}</b>. Model bu bilgisayarın işlemcisinde
+          çalışır; bulut, abonelik ya da internet gerektirmez.</small></span></div>
       <div class="kilavuz-adim"><span class="kilavuz-no"><span>🎥</span></span>
         <span class="kilavuz-metin"><b>Görüntü işleme: OpenCV</b>
           <small>Kameradan/videodan kareleri okur, kutuları çizer, kanıt fotoğraflarını kaydeder.</small></span></div>
@@ -455,8 +457,8 @@ setInterval(function () {
   }).catch(function () {});
 }, 2000);
 </script>
-<script src="/static/bildirim.js?v=9"></script>
-<script src="/static/bolge.js?v=8"></script>
-<script src="/static/kaynak.js?v=8"></script>
+<script src="/static/bildirim.js?v=11"></script>
+<script src="/static/bolge.js?v=11"></script>
+<script src="/static/kaynak.js?v=11"></script>
 </body>
 </html>

@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from pathlib import Path
 
 import cv2
 import numpy as np
+
+from app.ayarlar import gorunen_model_adi
 
 # COCO sınıfı → bizim tip. Bar alanında ilgilendiğimiz her şey burada.
 # NOT: Hazır model "kahve fincanı"nı ayrı bir sınıf olarak bilmez; cup (41) ve
@@ -47,8 +50,46 @@ KISI_ESIK_CARPANI = 0.8
 EN_KUCUK_KENAR_PX = 6
 
 
+_log = logging.getLogger("laffogato.tespit")
+
+# Model açılamadığında kullanıcıya söylenecek çözüm.
+# Kullanıcı yazılımcı değildir ve terminal kullanmaz — bu yüzden ekrandaki
+# metinde komut, dosya yolu ya da betik adı GEÇMEZ.
+#
+# İKİ ADIM, SIRAYLA — ve ikincisi ASIL çözümdür:
+#   1) Yeniden başlatmak ucuzdur ve gerçekten işe yaradığı hâller vardır
+#      (dosya yarım yazılmışken açılmış, başka program dosyayı kilitlemiş).
+#   2) Ama Başlat dosyası modeli İNDİRMEZ; model kuruluma dahildir. Dosya
+#      gerçekten yoksa yeniden başlatmak DURUMU DÜZELTMEZ. Bu yüzden metin,
+#      yeniden başlatmayı tek çare gibi sunmaz: aynı yazı yine çıkarsa
+#      kullanıcı kurulumu yapan kişiye yönlendirilir ve o kişiye NE
+#      söyleyeceği de yazılır. Aksi hâlde kullanıcı aynı adımı tekrarlayıp
+#      sıkışıp kalıyordu.
+# Sonucun da söylenmesi gerekir: model olmadan sayım durur; kullanıcı ekranda
+# sayaç ilerlemeyince bunun ayrı bir arıza olduğunu sanmasın.
+YENIDEN_BASLATMA_ONERISI = (
+    "Yapılacak: uygulamayı kapatın ve Başlat dosyasına yeniden çift tıklayın. "
+    "Aynı yazı yine çıkıyorsa kurulumu yapan kişiyi arayın — tanıma modelinin "
+    "bu bilgisayara kurulması gerekiyor. O kurulana kadar bardak sayımı durur."
+)
+
+
 class ModelHatasi(Exception):
-    pass
+    """Ekrana çıkan sade metni, günlüğe yazılan teknik ayrıntıdan AYIRIR.
+
+    `mesaj` (ve `str(hata)`) KULLANICIYA gösterilir: markalı model adı ve ne
+    yapması gerektiği. Dosya adı, tam yol ve özgün istisna metni yalnızca
+    `teknik` alanındadır; o alan günlüğe yazılır, ekrana ASLA çıkmaz.
+
+    Neden ayrı: eskiden tek bir metin hem ekrana hem günlüğe gidiyordu; ekranda
+    dosya yolu ve çalıştırılacak terminal komutu görünüyordu. Kullanıcı bunların
+    hiçbirini yapamaz, teknik destek ise tam yolu görmek zorundadır.
+    """
+
+    def __init__(self, mesaj: str, teknik: str = "") -> None:
+        super().__init__(mesaj)
+        self.mesaj = mesaj
+        self.teknik = teknik or mesaj
 
 
 class Tespitci:
@@ -56,9 +97,12 @@ class Tespitci:
         import onnxruntime
 
         if not model_dosyasi.exists():
+            teknik = f"Tespit modeli bulunamadı: {model_dosyasi}"
+            _log.error(teknik)
             raise ModelHatasi(
-                f"Tespit modeli bulunamadı: {model_dosyasi}\n"
-                "Çözüm: proje klasöründe 'bash models/indir.sh' komutunu çalıştırın."
+                f"{gorunen_model_adi(str(model_dosyasi))} bu bilgisayarda kurulu değil. "
+                f"{YENIDEN_BASLATMA_ONERISI}",
+                teknik,
             )
         saglayicilar = (
             ["CUDAExecutionProvider", "CPUExecutionProvider"]
@@ -68,9 +112,12 @@ class Tespitci:
         try:
             self._oturum = onnxruntime.InferenceSession(str(model_dosyasi), providers=saglayicilar)
         except Exception as hata:
+            teknik = f"Model yüklenemedi ({model_dosyasi}): {hata}"
+            _log.error(teknik)
             raise ModelHatasi(
-                f"Model yüklenemedi ({model_dosyasi.name}): {hata}. "
-                "Dosya bozuk olabilir, models/indir.sh ile yeniden indirin."
+                f"{gorunen_model_adi(str(model_dosyasi))} açılamadı; "
+                f"dosyası yarım inmiş ya da bozulmuş olabilir. {YENIDEN_BASLATMA_ONERISI}",
+                teknik,
             ) from hata
         girdi = self._oturum.get_inputs()[0]
         self._girdi_adi = girdi.name

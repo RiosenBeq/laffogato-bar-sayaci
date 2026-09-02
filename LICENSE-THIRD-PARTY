@@ -1,0 +1,40 @@
+ÜÇÜNCÜ TARAF BİLEŞENLER VE LİSANSLARI
+=====================================
+
+Laffogato'nun "NextGen AI" olarak adlandırılan tespit katmanı, açık kaynak
+bileşenlerin üzerine kuruludur. NextGen AI bu projenin ürün adıdır; aşağıdaki
+bileşenlerin markası ya da yeniden adlandırılmış hâli değildir. Lisans
+koşulları gereği asıl sahipleri burada belirtilir.
+
+
+1) YOLOX — nesne tespit modeli ve model ağırlıkları
+---------------------------------------------------
+Telif hakkı: Copyright (c) 2021-2022 Megvii Inc. (Megvii-BaseDetection)
+Proje adresi: https://github.com/Megvii-BaseDetection/YOLOX
+Lisans: Apache License 2.0
+Lisans metni: https://www.apache.org/licenses/LICENSE-2.0
+
+Ne için kullanılıyor: Kamera görüntüsündeki bardak ve kişileri bulan hazır
+model ağırlıkları (models/ klasörüne indirilen dosyalar) bu projeden gelir.
+Ağırlıklar bu depoya konulmaz; models/indir.sh betiği yukarıdaki adresten
+indirir. Apache-2.0, ticari kullanıma ve yeniden dağıtıma izin verir; bu
+telif bildiriminin korunmasını ve değişikliklerin belirtilmesini şart koşar.
+Model ağırlıkları değiştirilmeden, olduğu gibi kullanılmaktadır.
+
+
+2) ONNX Runtime — modeli çalıştıran motor
+------------------------------------------
+Telif hakkı: Copyright (c) Microsoft Corporation
+Proje adresi: https://github.com/microsoft/onnxruntime
+Lisans: MIT License
+Lisans metni: https://opensource.org/licenses/MIT
+
+Ne için kullanılıyor: İndirilen model dosyasını bu bilgisayarın işlemcisinde
+çalıştırır. Model dosyaları ONNX biçimindedir; buluta veri gönderilmez.
+
+
+Diğer bileşenler
+----------------
+Projenin geri kalan Python bağımlılıkları requirements.txt dosyasında
+listelenir; her birinin lisansı kendi paket sayfasında yayımlanmıştır
+(OpenCV: Apache-2.0, FastAPI: MIT, supervision: MIT, NumPy: BSD-3-Clause).
